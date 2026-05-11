@@ -86,6 +86,11 @@ test('Electron 真窗口主链路可用', async () => {
     await expect(window).toHaveTitle(/Emo-trash/)
     await expect(window.getByRole('heading', { name: '情绪垃圾桶' })).toBeVisible()
 
+    const glitchOption = window.locator('[data-effect-option="glitch"]')
+    await expect(glitchOption).toBeVisible()
+    await glitchOption.click()
+    await expect(glitchOption).toHaveAttribute('data-selected', 'true')
+
     await window.getByRole('textbox', { name: '输入室' }).fill('烦死了！！！今天真的很崩溃')
     const button = window.getByRole('button', { name: /长按|继续|坍缩/ })
     const box = await button.boundingBox()
@@ -99,16 +104,18 @@ test('Electron 真窗口主链路可用', async () => {
     await window.waitForTimeout(2300)
     await window.mouse.up()
 
-    await expect(window.getByText('原文已经坍缩，新的花朵正在花园里发芽。')).toBeVisible()
-
     const latestGardenItem = window.locator('[data-garden-item-id]').first()
+    await expect(latestGardenItem).toBeVisible()
+    await expect(latestGardenItem).toHaveAttribute('data-emotion-tag', 'collapse')
+    await expect(latestGardenItem).toHaveAttribute('data-flower-skin', 'purple')
+    await expect(latestGardenItem).toContainText('崩溃')
     await expect(latestGardenItem).toHaveAttribute('data-sprouting', 'true')
+
     await window.waitForTimeout(1300)
     await expect(latestGardenItem).toHaveAttribute('data-swaying', 'true')
-    await expect(latestGardenItem).toHaveAttribute('data-flower-skin', /.+/)
 
-    const ritualCanvas = window.locator('[data-particle-state]')
-    await expect(ritualCanvas).toHaveAttribute('data-particle-state', 'burst')
+    const ritualCanvas = window.locator('[data-effect-type]')
+    await expect(ritualCanvas).toHaveAttribute('data-effect-type', 'glitch')
     await expect(ritualCanvas).toHaveAttribute('data-shard-count', /\d+/)
     await expect(window.getByText(/#\d+/)).toBeVisible()
     await expect(window.getByRole('textbox', { name: '输入室' })).toHaveValue('')

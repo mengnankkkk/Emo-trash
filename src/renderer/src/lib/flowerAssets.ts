@@ -1,20 +1,28 @@
 import { Texture } from 'pixi.js'
+import type { EmotionTag } from '../types/emotion'
 
 export interface FlowerAsset {
+  emotionTag: EmotionTag
   label: string
+  displayName: string
+  colorHex: string
+  flowerType: number
   textureUrl: string
 }
 
-const FLOWER_PALETTES = [
-  ['#4b5563', '#ef4444', '#fca5a5', '#fee2e2'],
-  ['#4338ca', '#a855f7', '#c4b5fd', '#ede9fe'],
-  ['#ca8a04', '#f59e0b', '#fde68a', '#fef3c7'],
-  ['#0f766e', '#06b6d4', '#67e8f9', '#cffafe'],
-  ['#166534', '#22c55e', '#86efac', '#dcfce7'],
-  ['#7c2d12', '#fb7185', '#fda4af', '#ffe4e6']
+const FLOWER_ASSET_DEFINITIONS: Array<{
+  emotionTag: EmotionTag
+  label: string
+  displayName: string
+  colorHex: string
+}> = [
+  { emotionTag: 'anger', label: 'red', displayName: '愤怒', colorHex: '#f87171' },
+  { emotionTag: 'collapse', label: 'purple', displayName: '崩溃', colorHex: '#c084fc' },
+  { emotionTag: 'anxiety', label: 'yellow', displayName: '焦虑', colorHex: '#fbbf24' },
+  { emotionTag: 'fatigue', label: 'blue', displayName: '疲惫', colorHex: '#60a5fa' },
+  { emotionTag: 'calm', label: 'green', displayName: '平静', colorHex: '#34d399' },
+  { emotionTag: 'relief', label: 'pink', displayName: '释然', colorHex: '#fb7185' }
 ]
-
-const FLOWER_LABELS = ['red', 'purple', 'yellow', 'blue', 'green', 'pink']
 
 function drawPixel(
   ctx: CanvasRenderingContext2D,
@@ -33,34 +41,34 @@ function buildPlaceholderFlowerTexture(index: number): FlowerAsset {
   canvas.height = 16
 
   const ctx = canvas.getContext('2d')
+  const meta = FLOWER_ASSET_DEFINITIONS[index]
   if (!ctx) {
-    return { label: FLOWER_LABELS[index], textureUrl: '' }
+    return {
+      ...meta,
+      flowerType: index + 1,
+      textureUrl: ''
+    }
   }
 
   ctx.clearRect(0, 0, 16, 16)
   ctx.imageSmoothingEnabled = false
 
-  const palette = FLOWER_PALETTES[index % FLOWER_PALETTES.length]
-  const stem = palette[0]
-  const petalDark = palette[1]
-  const petalLight = palette[2]
-  const center = palette[3]
+  const stem = '#3f6212'
+  const petalDark = meta.colorHex
+  const petalLight = meta.colorHex.replace('f8', 'fd')
+  const center = '#fde68a'
 
-  // stem
   drawPixel(ctx, 7, 10, 2, stem)
   drawPixel(ctx, 7, 11, 2, stem)
   drawPixel(ctx, 7, 12, 2, stem)
   drawPixel(ctx, 8, 13, 2, stem)
   drawPixel(ctx, 8, 14, 2, stem)
-
-  // leaves
   drawPixel(ctx, 5, 11, 2, stem)
   drawPixel(ctx, 4, 12, 2, stem)
   drawPixel(ctx, 10, 12, 2, stem)
   drawPixel(ctx, 11, 13, 2, stem)
 
-  // petals
-  drawPixel(ctx, 7, 4, 2, petalDark)
+  drawPixel(ctx, 7, 3, 2, petalDark)
   drawPixel(ctx, 5, 5, 2, petalDark)
   drawPixel(ctx, 9, 5, 2, petalDark)
   drawPixel(ctx, 4, 7, 2, petalLight)
@@ -69,31 +77,38 @@ function buildPlaceholderFlowerTexture(index: number): FlowerAsset {
   drawPixel(ctx, 10, 7, 2, petalLight)
   drawPixel(ctx, 5, 9, 2, petalDark)
   drawPixel(ctx, 9, 9, 2, petalDark)
-  drawPixel(ctx, 7, 8, 2, petalLight)
-  drawPixel(ctx, 6, 6, 2, petalLight)
-  drawPixel(ctx, 8, 6, 2, petalLight)
-
-  // center
-  drawPixel(ctx, 7, 7, 2, center)
+  drawPixel(ctx, 6, 5, 2, petalLight)
+  drawPixel(ctx, 8, 5, 2, petalLight)
+  drawPixel(ctx, 7, 8, 2, center)
 
   return {
-    label: FLOWER_LABELS[index],
+    ...meta,
+    flowerType: index + 1,
     textureUrl: canvas.toDataURL('image/png')
   }
 }
 
 export function getFlowerAssets(): FlowerAsset[] {
-  return FLOWER_LABELS.map((label, index) => {
-    const normalizedPath = `/flowers/flower-${index + 1}.png`
-    return {
-      label,
-      textureUrl: normalizedPath
-    }
-  })
+  return FLOWER_ASSET_DEFINITIONS.map((meta, index) => ({
+    ...meta,
+    flowerType: index + 1,
+    textureUrl: `/flowers/flower-${index + 1}.png`
+  }))
 }
 
 export function createPlaceholderFlowerAssets(): FlowerAsset[] {
-  return FLOWER_LABELS.map((_, index) => buildPlaceholderFlowerTexture(index))
+  return FLOWER_ASSET_DEFINITIONS.map((_, index) => buildPlaceholderFlowerTexture(index))
+}
+
+export function getFlowerAssetByType(flowerType: number): FlowerAsset {
+  const assets = createPlaceholderFlowerAssets()
+  return assets[(flowerType - 1 + assets.length) % assets.length]
+}
+
+export function getFlowerAssetByTag(emotionTag: EmotionTag): FlowerAsset {
+  const assets = createPlaceholderFlowerAssets()
+  const found = assets.find((asset) => asset.emotionTag === emotionTag)
+  return found ?? assets[0]
 }
 
 export function ensureNearestTexture(texture: Texture): Texture {

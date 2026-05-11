@@ -2,11 +2,13 @@ import 'pixi.js/unsafe-eval'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Application, Container, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js'
+import type { RitualEffect } from '../../types/emotion'
 
 interface RitualCanvasProps {
   text: string
   active: boolean
   particleState: 'idle' | 'burst'
+  effectType: RitualEffect
 }
 
 interface Shard {
@@ -14,6 +16,9 @@ interface Shard {
   velocityX: number
   velocityY: number
   rotationSpeed: number
+  jitterX: number
+  jitterY: number
+  fadeRate: number
 }
 
 interface AlphaBounds {
@@ -201,7 +206,62 @@ function mergeHorizontalTiles(tiles: TileContent[], maxGap = 1): Rectangle[] {
   return merged
 }
 
-function RitualCanvas({ text, active, particleState }: RitualCanvasProps): React.JSX.Element {
+function createShardMotion(
+  effectType: RitualEffect,
+  normalizedX: number,
+  normalizedY: number,
+  densityFactor: number
+): Omit<Shard, 'sprite'> {
+  const scatterGain = 1 + densityFactor * 0.18
+
+  switch (effectType) {
+    case 'fall':
+      return {
+        velocityX: normalizedX * 0.018 * scatterGain + (Math.random() - 0.5) * 0.45,
+        velocityY: Math.abs(normalizedY) * 0.01 - Math.random() * 0.8,
+        rotationSpeed: (Math.random() - 0.5) * 0.025,
+        jitterX: 0,
+        jitterY: 0,
+        fadeRate: 0.0022
+      }
+    case 'glitch':
+      return {
+        velocityX: normalizedX * 0.012 + (Math.random() - 0.5) * 0.3,
+        velocityY: normalizedY * 0.004 - Math.random() * 0.15,
+        rotationSpeed: (Math.random() - 0.5) * 0.01,
+        jitterX: 1.2 + Math.random() * 1.6,
+        jitterY: 0.25,
+        fadeRate: 0.0044
+      }
+    case 'ash':
+      return {
+        velocityX: normalizedX * 0.01 + (Math.random() - 0.5) * 0.25,
+        velocityY: -0.6 - Math.random() * 0.7,
+        rotationSpeed: (Math.random() - 0.5) * 0.02,
+        jitterX: 0.15,
+        jitterY: 0.1,
+        fadeRate: 0.005
+      }
+    case 'burst':
+    default:
+      return {
+        velocityX:
+          normalizedX * 0.035 * scatterGain + (Math.random() - 0.5) * (1.3 + densityFactor * 0.45),
+        velocityY: normalizedY * 0.014 * scatterGain - Math.random() * (2 + densityFactor * 0.5),
+        rotationSpeed: (Math.random() - 0.5) * (0.07 + densityFactor * 0.02),
+        jitterX: 0,
+        jitterY: 0,
+        fadeRate: 0.0032
+      }
+  }
+}
+
+function RitualCanvas({
+  text,
+  active,
+  particleState,
+  effectType
+}: RitualCanvasProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const appRef = useRef<Application | null>(null)
   const previewLayerRef = useRef<Container | null>(null)
@@ -290,6 +350,7 @@ function RitualCanvas({ text, active, particleState }: RitualCanvasProps): React
     generatedTextureRef.current?.destroy(true)
     generatedTextureRef.current = null
     shardsRef.current = []
+    setShardCount(0)
 
     if (!text.trim()) {
       return
@@ -434,14 +495,15 @@ function RitualCanvas({ text, active, particleState }: RitualCanvasProps): React
 
       const normalizedX = safeRect.x + safeRect.width / 2 - centerX
       const normalizedY = safeRect.y + safeRect.height / 2 - centerY
+      const motion = createShardMotion(effectType, normalizedX, normalizedY, densityFactor)
 
-      const scatterGain = 1 + densityFactor * 0.18
+      if (effectType === 'ash') {
+        shardSprite.tint = 0xd6a46b
+      }
+
       shardsRef.current.push({
         sprite: shardSprite,
-        velocityX:
-          normalizedX * 0.035 * scatterGain + (Math.random() - 0.5) * (1.3 + densityFactor * 0.45),
-        velocityY: normalizedY * 0.014 * scatterGain - Math.random() * (2 + densityFactor * 0.5),
-        rotationSpeed: (Math.random() - 0.5) * (0.07 + densityFactor * 0.02)
+        ...motion
       })
 
       shatterLayer.addChild(shardSprite)
@@ -450,12 +512,44 @@ function RitualCanvas({ text, active, particleState }: RitualCanvasProps): React
     setShardCount(shardsRef.current.length)
 
     const ticker = (time: { deltaTime: number }): void => {
-      shardsRef.current.forEach((shard) => {
-        shard.velocityY += 0.22 * time.deltaTime
-        shard.sprite.x = Math.round(shard.sprite.x + shard.velocityX * time.deltaTime)
-        shard.sprite.y = Math.round(shard.sprite.y + shard.velocityY * time.deltaTime)
-        shard.sprite.rotation += shard.rotationSpeed * time.deltaTime
-        shard.sprite.alpha = Math.max(0, shard.sprite.alpha - 0.0032 * time.deltaTime)
+      shardsRef.current.forEach((shard, index) => {
+        switch (effectType) {
+          case 'fall':
+            shard.velocityY += 0.28 * time.deltaTime
+            shard.sprite.x = Math.round(shard.sprite.x + shard.velocityX * time.deltaTime)
+            shard.sprite.y = Math.round(shard.sprite.y + shard.velocityY * time.deltaTime)
+            shard.sprite.rotation += shard.rotationSpeed * time.deltaTime
+            break
+          case 'glitch':
+            shard.sprite.x = Math.round(
+              shard.sprite.x +
+                shard.velocityX * time.deltaTime +
+                Math.sin(index + time.deltaTime) * shard.jitterX
+            )
+            shard.sprite.y = Math.round(shard.sprite.y + shard.velocityY * time.deltaTime)
+            if (Math.random() > 0.7) {
+              shard.sprite.alpha = Math.max(
+                0.2,
+                shard.sprite.alpha - shard.fadeRate * 3 * time.deltaTime
+              )
+            }
+            break
+          case 'ash':
+            shard.velocityY -= 0.02 * time.deltaTime
+            shard.sprite.x = Math.round(shard.sprite.x + shard.velocityX * time.deltaTime)
+            shard.sprite.y = Math.round(shard.sprite.y + shard.velocityY * time.deltaTime)
+            shard.sprite.rotation += shard.rotationSpeed * time.deltaTime
+            break
+          case 'burst':
+          default:
+            shard.velocityY += 0.22 * time.deltaTime
+            shard.sprite.x = Math.round(shard.sprite.x + shard.velocityX * time.deltaTime)
+            shard.sprite.y = Math.round(shard.sprite.y + shard.velocityY * time.deltaTime)
+            shard.sprite.rotation += shard.rotationSpeed * time.deltaTime
+            break
+        }
+
+        shard.sprite.alpha = Math.max(0, shard.sprite.alpha - shard.fadeRate * time.deltaTime)
       })
     }
 
@@ -468,13 +562,23 @@ function RitualCanvas({ text, active, particleState }: RitualCanvasProps): React
       generatedTextureRef.current?.destroy(true)
       generatedTextureRef.current = null
       shardsRef.current = []
+      setShardCount(0)
     }
-  }, [active, isCanvasReady, pixelConfig.cellSize, pixelConfig.minCoverage, text])
+  }, [
+    active,
+    effectType,
+    isCanvasReady,
+    particleState,
+    pixelConfig.cellSize,
+    pixelConfig.minCoverage,
+    text
+  ])
 
   return (
     <div
       ref={hostRef}
       className="h-64 w-full rounded-3xl border border-white/10 bg-black/20"
+      data-effect-type={effectType}
       data-particle-state={particleState}
       data-shard-count={active ? String(shardCount) : '0'}
     />
