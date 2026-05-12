@@ -1,5 +1,10 @@
 import { Texture } from 'pixi.js'
-import type { EmotionTag } from '../types/emotion'
+import {
+  emotionDefinitions,
+  getEmotionDefinitionByFlowerType,
+  getEmotionDefinitionByTag,
+  type EmotionTag
+} from '../../../shared/emotionMeta'
 
 export interface FlowerAsset {
   emotionTag: EmotionTag
@@ -9,20 +14,6 @@ export interface FlowerAsset {
   flowerType: number
   textureUrl: string
 }
-
-const FLOWER_ASSET_DEFINITIONS: Array<{
-  emotionTag: EmotionTag
-  label: string
-  displayName: string
-  colorHex: string
-}> = [
-  { emotionTag: 'anger', label: 'red', displayName: '愤怒', colorHex: '#f87171' },
-  { emotionTag: 'collapse', label: 'purple', displayName: '崩溃', colorHex: '#c084fc' },
-  { emotionTag: 'anxiety', label: 'yellow', displayName: '焦虑', colorHex: '#fbbf24' },
-  { emotionTag: 'fatigue', label: 'blue', displayName: '疲惫', colorHex: '#60a5fa' },
-  { emotionTag: 'calm', label: 'green', displayName: '平静', colorHex: '#34d399' },
-  { emotionTag: 'relief', label: 'pink', displayName: '释然', colorHex: '#fb7185' }
-]
 
 function drawPixel(
   ctx: CanvasRenderingContext2D,
@@ -41,11 +32,10 @@ function buildPlaceholderFlowerTexture(index: number): FlowerAsset {
   canvas.height = 16
 
   const ctx = canvas.getContext('2d')
-  const meta = FLOWER_ASSET_DEFINITIONS[index]
+  const meta = emotionDefinitions[index]
   if (!ctx) {
     return {
       ...meta,
-      flowerType: index + 1,
       textureUrl: ''
     }
   }
@@ -83,32 +73,35 @@ function buildPlaceholderFlowerTexture(index: number): FlowerAsset {
 
   return {
     ...meta,
-    flowerType: index + 1,
     textureUrl: canvas.toDataURL('image/png')
   }
 }
 
 export function getFlowerAssets(): FlowerAsset[] {
-  return FLOWER_ASSET_DEFINITIONS.map((meta, index) => ({
+  return emotionDefinitions.map((meta) => ({
     ...meta,
-    flowerType: index + 1,
-    textureUrl: `/flowers/flower-${index + 1}.png`
+    textureUrl: `/flowers/flower-${meta.flowerType}.png`
   }))
 }
 
 export function createPlaceholderFlowerAssets(): FlowerAsset[] {
-  return FLOWER_ASSET_DEFINITIONS.map((_, index) => buildPlaceholderFlowerTexture(index))
+  return emotionDefinitions.map((_, index) => buildPlaceholderFlowerTexture(index))
 }
 
 export function getFlowerAssetByType(flowerType: number): FlowerAsset {
-  const assets = createPlaceholderFlowerAssets()
-  return assets[(flowerType - 1 + assets.length) % assets.length]
+  const meta = getEmotionDefinitionByFlowerType(flowerType)
+  return (
+    createPlaceholderFlowerAssets().find((asset) => asset.flowerType === meta.flowerType) ??
+    createPlaceholderFlowerAssets()[0]
+  )
 }
 
 export function getFlowerAssetByTag(emotionTag: EmotionTag): FlowerAsset {
-  const assets = createPlaceholderFlowerAssets()
-  const found = assets.find((asset) => asset.emotionTag === emotionTag)
-  return found ?? assets[0]
+  const meta = getEmotionDefinitionByTag(emotionTag)
+  return (
+    createPlaceholderFlowerAssets().find((asset) => asset.emotionTag === meta.emotionTag) ??
+    createPlaceholderFlowerAssets()[0]
+  )
 }
 
 export function ensureNearestTexture(texture: Texture): Texture {

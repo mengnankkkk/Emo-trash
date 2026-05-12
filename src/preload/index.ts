@@ -1,7 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { emoTrashChannels } from './api'
-import type { EmoTrashApi, ReleaseEmotionInput, ShakeWindowInput } from './api'
+import type {
+  EmotionStatsRange,
+  EmotionTag,
+  EmotionTimelineQuery,
+  EmoTrashApi,
+  ReleaseEmotionInput,
+  ShakeWindowInput
+} from './api'
 
 const api: EmoTrashApi = {
   releaseEmotion(input: ReleaseEmotionInput) {
@@ -9,6 +16,25 @@ const api: EmoTrashApi = {
   },
   listGarden() {
     return ipcRenderer.invoke(emoTrashChannels.listGarden)
+  },
+  getEmotionStats(rangeDays: EmotionStatsRange) {
+    return ipcRenderer.invoke(emoTrashChannels.getEmotionStats, rangeDays)
+  },
+  getGardenGrowth() {
+    return ipcRenderer.invoke(emoTrashChannels.getGardenGrowth)
+  },
+  listEmotionCalendar(rangeDays: number, emotionTags: EmotionTag[] = []) {
+    return ipcRenderer.invoke(emoTrashChannels.listEmotionCalendar, {
+      rangeDays,
+      emotionTags
+    })
+  },
+  listEmotionTimeline(query?: Partial<EmotionTimelineQuery>) {
+    return ipcRenderer.invoke(emoTrashChannels.listEmotionTimeline, {
+      emotionTags: [],
+      limit: 50,
+      ...query
+    })
   },
   triggerShake(input?: Partial<ShakeWindowInput>) {
     return ipcRenderer.invoke(emoTrashChannels.triggerShake, input ?? {})

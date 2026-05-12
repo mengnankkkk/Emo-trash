@@ -93,16 +93,11 @@ test('Electron 真窗口主链路可用', async () => {
 
     await window.getByRole('textbox', { name: '输入室' }).fill('烦死了！！！今天真的很崩溃')
     const button = window.getByRole('button', { name: /长按|继续|坍缩/ })
-    const box = await button.boundingBox()
 
-    if (!box) {
-      throw new Error('未找到长按按钮位置')
-    }
-
-    await window.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
-    await window.mouse.down()
+    await button.dispatchEvent('pointerdown')
+    await expect(button).toContainText('继续按住粉碎')
     await window.waitForTimeout(2300)
-    await window.mouse.up()
+    await button.dispatchEvent('pointerup')
 
     const latestGardenItem = window.locator('[data-garden-item-id]').first()
     await expect(latestGardenItem).toBeVisible()
@@ -117,7 +112,7 @@ test('Electron 真窗口主链路可用', async () => {
     const ritualCanvas = window.locator('[data-effect-type]')
     await expect(ritualCanvas).toHaveAttribute('data-effect-type', 'glitch')
     await expect(ritualCanvas).toHaveAttribute('data-shard-count', /\d+/)
-    await expect(window.getByText(/#\d+/)).toBeVisible()
+    await expect(latestGardenItem.getByText(/#\d+/)).toBeVisible()
     await expect(window.getByRole('textbox', { name: '输入室' })).toHaveValue('')
 
     expect(consoleErrors).toEqual([])

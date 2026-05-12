@@ -131,6 +131,32 @@ textarea::-webkit-scrollbar {
   transform-origin: 50% 100%;
 }
 
+.garden-card--growth-2 {
+  border-color: rgba(196, 132, 252, 0.3);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.25));
+}
+
+.garden-card--growth-2 .garden-glow {
+  background: rgba(192, 132, 252, 0.42) !important;
+}
+
+.garden-card--growth-3 {
+  border-color: rgba(253, 224, 71, 0.35);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px rgba(253, 224, 71, 0.08),
+    0 0 28px rgba(253, 224, 71, 0.08);
+}
+
+.garden-card--growth-3 .garden-glow {
+  background: rgba(253, 224, 71, 0.4) !important;
+}
+
+.garden-card--growth-3 .garden-bloom {
+  filter: drop-shadow(0 0 8px rgba(253, 224, 71, 0.18));
+}
+
 .garden-sprite {
   image-rendering: pixelated;
   image-rendering: crisp-edges;

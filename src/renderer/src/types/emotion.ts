@@ -1,4 +1,26 @@
-export type EmotionTag = 'anger' | 'collapse' | 'anxiety' | 'fatigue' | 'calm' | 'relief'
+import type {
+  EmotionCalendarDay,
+  EmotionStatsRange,
+  EmotionStatsSummary,
+  EmotionTag,
+  EmotionTimelineEntry,
+  EmotionTimelineQuery,
+  GardenGrowthSnapshot,
+  GardenItem
+} from '../../../preload/api'
+import type { RitualEffect } from '../../../shared/emotionMeta'
+
+export type {
+  EmotionCalendarDay,
+  EmotionStatsRange,
+  EmotionStatsSummary,
+  EmotionTag,
+  EmotionTimelineEntry,
+  EmotionTimelineQuery,
+  GardenGrowthSnapshot,
+  GardenItem,
+  RitualEffect
+}
 
 export interface EmotionFeatureInput {
   textLength: number
@@ -7,13 +29,4 @@ export interface EmotionFeatureInput {
   flowerType: number
   colorHex: string
   emotionTag: EmotionTag
-}
-
-export interface GardenItem {
-  id: number
-  timestamp: string
-  flowerType: number
-  colorHex: string
-  growthStage: number
-  emotionTag?: EmotionTag
 }
