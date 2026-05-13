@@ -108,12 +108,15 @@ test('Electron 真窗口主链路可用', async () => {
 
     await window.waitForTimeout(1300)
     await expect(latestGardenItem).toHaveAttribute('data-swaying', 'true')
-
     const ritualCanvas = window.locator('[data-effect-type]')
     await expect(ritualCanvas).toHaveAttribute('data-effect-type', 'glitch')
     await expect(ritualCanvas).toHaveAttribute('data-shard-count', /\d+/)
     await expect(latestGardenItem.getByText(/#\d+/)).toBeVisible()
     await expect(window.getByRole('textbox', { name: '输入室' })).toHaveValue('')
+
+    await window.getByRole('button', { name: /花园/i }).click()
+    await expect(window.locator('[data-app-page="garden"]')).toHaveAttribute('data-selected', 'true')
+    await expect(window.locator('[data-garden-item-id="1"]').first()).toBeVisible()
 
     expect(consoleErrors).toEqual([])
   } finally {

@@ -139,9 +139,11 @@ function GardenView({ items, growthSnapshot }: GardenViewProps): React.JSX.Eleme
                 data-growth-stage={item.growthStage}
                 data-sprouting={isSprouting ? 'true' : 'false'}
                 data-swaying={isSwaying ? 'true' : 'false'}
+                data-idle-sway={isSprouting ? 'false' : 'true'}
                 data-flower-skin={flowerAsset.label}
                 className={[
-                  'garden-card flex min-h-32 flex-col items-center justify-between gap-2 rounded-2xl border border-white/10 bg-black/25 px-3 py-3',
+                  'garden-card garden-card--interactive flex min-h-32 flex-col items-center justify-between gap-2 rounded-2xl border border-white/10 bg-black/25 px-3 py-3',
+                  !isSprouting ? 'garden-card--idle' : '',
                   isSprouting ? 'garden-card--sprouting' : '',
                   isSwaying ? 'garden-card--swaying' : '',
                   item.growthStage === 2 ? 'garden-card--growth-2' : '',

@@ -90,6 +90,45 @@ textarea::-webkit-scrollbar {
   }
 }
 
+@keyframes flowerSwayIdle {
+  0% {
+    transform: translate(-50%, 0) rotate(0deg) scale(1);
+  }
+
+  25% {
+    transform: translate(-50%, -0.5px) rotate(-1.4deg) scale(1.005);
+  }
+
+  50% {
+    transform: translate(-50%, 0) rotate(0deg) scale(1);
+  }
+
+  75% {
+    transform: translate(-50%, -0.5px) rotate(1.4deg) scale(1.005);
+  }
+
+  100% {
+    transform: translate(-50%, 0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes flowerGlowBreath {
+  0% {
+    opacity: 0.24;
+    transform: scaleX(0.92) scaleY(0.94);
+  }
+
+  50% {
+    opacity: 0.38;
+    transform: scaleX(1.08) scaleY(1.12);
+  }
+
+  100% {
+    opacity: 0.24;
+    transform: scaleX(0.92) scaleY(0.94);
+  }
+}
+
 @keyframes flowerSway {
   0% {
     transform: translate(-50%, 0) rotate(0deg) scale(1);
@@ -112,6 +151,42 @@ textarea::-webkit-scrollbar {
   }
 }
 
+.garden-card--idle .garden-bloom {
+  animation: flowerSwayIdle 3.6s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+.garden-card--idle .garden-glow {
+  animation: flowerGlowBreath 4.2s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+
+.garden-card--interactive {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.garden-card--interactive:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.26));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 24px rgba(5, 6, 10, 0.24);
+}
+
+.garden-card--interactive:hover .garden-bloom {
+  filter: brightness(1.06) saturate(1.08);
+}
+
+.garden-card--interactive:hover .garden-glow {
+  opacity: 0.52;
+  transform: scaleX(1.18) scaleY(1.22);
+}
+
 .garden-card--sprouting {
   animation: sproutCard 1.1s ease-out both;
 }
@@ -129,6 +204,31 @@ textarea::-webkit-scrollbar {
 .garden-card--swaying .garden-bloom {
   animation: flowerSway 1.2s ease-in-out infinite;
   transform-origin: 50% 100%;
+}
+
+.garden-card--swaying .garden-bloom {
+  animation: flowerSway 1.2s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+.garden-card--swaying .garden-glow {
+  animation: flowerGlowBreath 1.8s ease-in-out infinite;
+}
+
+.garden-card--growth-2 .garden-bloom {
+  animation-duration: 3s;
+}
+
+.garden-card--growth-2 .garden-glow {
+  animation-duration: 3.5s;
+}
+
+.garden-card--growth-3 .garden-bloom {
+  animation-duration: 2.4s;
+}
+
+.garden-card--growth-3 .garden-glow {
+  animation-duration: 2.8s;
 }
 
 .garden-card--growth-2 {
@@ -177,7 +277,16 @@ textarea::-webkit-scrollbar {
   .garden-card--sprouting,
   .garden-card--sprouting .garden-bloom,
   .garden-card--sprouting .garden-glow,
-  .garden-card--swaying .garden-bloom {
+  .garden-card--swaying .garden-bloom,
+  .garden-card--swaying .garden-glow,
+  .garden-card--idle .garden-bloom,
+  .garden-card--idle .garden-glow {
     animation: none !important;
+  }
+
+  .garden-card--interactive,
+  .garden-card--interactive:hover {
+    transform: none !important;
+    box-shadow: none !important;
   }
 }
