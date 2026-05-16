@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   EmotionCalendarDay,
+  EmotionIntensity,
   EmotionStatsRange,
   EmotionStatsSummary,
   EmotionTag,
   EmotionTimelineEntry,
   GardenGrowthSnapshot,
   GardenItem,
+  ReleaseEmotionInput,
   RitualEffect
 } from './types/emotion'
 import CaptureInput from './features/capture/CaptureInput'
@@ -98,6 +100,8 @@ const appPages: Array<{
 
 function App(): React.JSX.Element {
   const [inputValue, setInputValue] = useState('')
+  const [draftAnalysis, setDraftAnalysis] = useState<ReleaseEmotionInput | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [ritualText, setRitualText] = useState('')
   const [gardenItems, setGardenItems] = useState<GardenItem[]>([])
   const [ritualActive, setRitualActive] = useState(false)
@@ -116,7 +120,9 @@ function App(): React.JSX.Element {
   const [isDashboardLoading, setIsDashboardLoading] = useState(true)
   const hasLoadedRef = useRef(false)
   const refreshRequestIdRef = useRef(0)
+  const analysisRequestIdRef = useRef(0)
   const {
+    analyzeEmotion,
     listGarden,
     releaseEmotion,
     getEmotionStats,
@@ -258,9 +264,47 @@ function App(): React.JSX.Element {
     void refreshAllPanels({ preferSelectedDate: false })
   }, [refreshAllPanels])
 
+  useEffect(() => {
+    const trimmed = inputValue.trim()
+
+    if (!trimmed) {
+      setDraftAnalysis(null)
+      setIsAnalyzing(false)
+      return
+    }
+
+    const requestId = analysisRequestIdRef.current + 1
+    analysisRequestIdRef.current = requestId
+    setIsAnalyzing(true)
+
+    const timer = window.setTimeout(() => {
+      void analyzeEmotion(trimmed)
+        .then((result) => {
+          if (analysisRequestIdRef.current === requestId) {
+            setDraftAnalysis(result)
+          }
+        })
+        .catch((error) => {
+          console.error(error)
+          if (analysisRequestIdRef.current === requestId) {
+            setDraftAnalysis(null)
+          }
+        })
+        .finally(() => {
+          if (analysisRequestIdRef.current === requestId) {
+            setIsAnalyzing(false)
+          }
+        })
+    }, 320)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [analyzeEmotion, inputValue])
+
   const isDisabled = useMemo(() => {
-    return isSubmitting || inputValue.trim().length === 0
-  }, [inputValue, isSubmitting])
+    return isSubmitting || inputValue.trim().length === 0 || !draftAnalysis
+  }, [draftAnalysis, inputValue, isSubmitting])
 
   const activeEffect = useMemo(() => {
     return (
@@ -279,6 +323,29 @@ function App(): React.JSX.Element {
   const previewGardenItems = useMemo(() => {
     return gardenItems.slice(0, 6)
   }, [gardenItems])
+
+  const intensityLabelMap: Record<EmotionIntensity, string> = {
+    mild: '轻微',
+    moderate: '中等',
+    strong: '强烈'
+  }
+
+  const analysisSummary = useMemo(() => {
+    if (!draftAnalysis) {
+      return null
+    }
+
+    return {
+      emotionTag: draftAnalysis.emotionTag,
+      intensityLabel: intensityLabelMap[draftAnalysis.analysis.emotionIntensity],
+      triggerScene: draftAnalysis.analysis.triggerScene,
+      guidanceQuestion: draftAnalysis.analysis.guidanceQuestion,
+      suggestedLabels: draftAnalysis.analysis.suggestedLabels,
+      timeContextLabel: draftAnalysis.analysis.timeContextLabel,
+      confidence: Math.round(draftAnalysis.analysis.confidence * 100),
+      sourceLabel: draftAnalysis.analysis.source === 'ai' ? 'AI 识别' : '规则回退'
+    }
+  }, [draftAnalysis])
 
   const pageHeadline = useMemo(() => {
     if (activePage === 'release') {
@@ -389,7 +456,7 @@ function App(): React.JSX.Element {
 
   const handleCommit = async (): Promise<void> => {
     const trimmedInput = inputValue.trim()
-    if (!trimmedInput) {
+    if (!trimmedInput || !draftAnalysis) {
       return
     }
 
@@ -400,9 +467,10 @@ function App(): React.JSX.Element {
     setStatusText('正在坍缩当前输入，只保留花朵结果。')
 
     try {
-      const nextGarden = await releaseEmotion(trimmedInput)
+      const nextGarden = await releaseEmotion(draftAnalysis)
       setGardenItems(nextGarden)
       setInputValue('')
+      setDraftAnalysis(null)
       setStatusText('原文已经坍缩，新的花朵正在花园里发芽。')
       await refreshAllPanels({ nextGarden, preferSelectedDate: true })
     } catch (error) {
@@ -521,6 +589,59 @@ function App(): React.JSX.Element {
 
             <div className="flex flex-1 flex-col gap-6">
               <CaptureInput value={inputValue} disabled={isSubmitting} onChange={setInputValue} />
+              <div className="rounded-[1.6rem] border border-white/10 bg-black/20 px-4 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.24em] text-white/30">AI 情绪识别</p>
+                    <h3 className="mt-1 text-lg font-semibold text-white">自动推荐情绪与引导</h3>
+                  </div>
+                  <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] tracking-[0.18em] text-white/55">
+                    {isAnalyzing ? '识别中' : analysisSummary ? analysisSummary.sourceLabel : '等待输入'}
+                  </span>
+                </div>
+                {analysisSummary ? (
+                  <div className="mt-4 space-y-4">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-white/30">主情绪</p>
+                        <p className="mt-2 text-base font-semibold text-white">
+                          {analysisSummary.emotionTag} · {analysisSummary.intensityLabel}
+                        </p>
+                        <p className="mt-1 text-xs text-white/45">
+                          置信度 {analysisSummary.confidence}% · {analysisSummary.timeContextLabel}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-white/30">触发场景</p>
+                        <p className="mt-2 text-base font-semibold text-white">
+                          {analysisSummary.triggerScene}
+                        </p>
+                        <p className="mt-1 text-xs text-white/45">自动结合输入与时间语境生成</p>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-rose-300/20 bg-rose-400/10 px-3 py-3">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-rose-100/70">引导问题</p>
+                      <p className="mt-2 text-sm leading-6 text-rose-50">
+                        {analysisSummary.guidanceQuestion}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {analysisSummary.suggestedLabels.map((label) => (
+                        <span
+                          key={label}
+                          className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] text-white/70"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm leading-6 text-white/45">
+                    输入几句话后，这里会自动显示识别到的主情绪、触发场景和温和追问。
+                  </p>
+                )}
+              </div>
               <HoldToShredButton disabled={isDisabled} onCommit={handleCommit} />
             </div>
           </div>

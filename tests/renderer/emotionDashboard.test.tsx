@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import EmotionStatsPanel from '../../src/renderer/src/features/analytics/EmotionStatsPanel'
 import EmotionCalendarHeatmap from '../../src/renderer/src/features/history/EmotionCalendarHeatmap'
+import EmotionFilterBar from '../../src/renderer/src/features/history/EmotionFilterBar'
 import EmotionTimeline from '../../src/renderer/src/features/history/EmotionTimeline'
 import type {
   EmotionStatsSummary,
@@ -44,7 +45,18 @@ const timelineItems: EmotionTimelineEntry[] = [
     flowerType: 1,
     colorHex: '#f87171',
     growthStage: 2,
-    emotionTag: 'anger'
+    emotionTag: 'anger',
+    analysis: {
+      emotionIntensity: 'strong',
+      triggerScene: '工作压力',
+      guidanceQuestion: '这件事里最让你生气的瞬间是什么？',
+      suggestedLabels: ['生气', '压抑'],
+      confidence: 0.86,
+      timeContextHour: 20,
+      timeContextLabel: '晚上 18:00 - 22:59',
+      source: 'ai',
+      sourceModel: 'test-model'
+    }
   }
 ]
 
@@ -69,7 +81,7 @@ describe('emotion dashboard components', () => {
     expect(onRangeChange).toHaveBeenCalledWith(30)
   })
 
-  it('点击热力图日期并展示时间轴条目', () => {
+  it('点击热力图日期并展示时间轴 AI 元数据', () => {
     const onSelectDate = vi.fn()
 
     render(
@@ -91,5 +103,18 @@ describe('emotion dashboard components', () => {
     expect(onSelectDate).toHaveBeenCalledWith('2026-05-11')
     expect(screen.getByText(/2026-05-11 20:00:00/)).toBeInTheDocument()
     expect(screen.getByText(/开花/)).toBeInTheDocument()
+    expect(screen.getByText('工作压力')).toBeInTheDocument()
+    expect(screen.getByText(/最让你生气的瞬间/)).toBeInTheDocument()
+  })
+
+  it('uses generated flower icons in the filter bar', () => {
+    render(<EmotionFilterBar selectedTags={[]} onChange={vi.fn()} />)
+
+    const icons = screen.getAllByRole('img')
+    expect(icons.length).toBeGreaterThan(0)
+
+    icons.forEach((icon) => {
+      expect(icon).toHaveAttribute('src', expect.stringMatching(/^data:image\/png;base64,/))
+    })
   })
 })

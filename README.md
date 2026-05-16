@@ -31,6 +31,23 @@ npm install
 npm run dev
 ```
 
+## AI 情绪识别配置
+
+现在支持通过 OpenAI 格式兼容模型做情绪识别、强度判断、触发场景提取和引导式提问。
+
+启动前可配置：
+
+```bash
+EMO_TRASH_OPENAI_API_KEY=your_api_key
+EMO_TRASH_OPENAI_MODEL=your-model-name
+EMO_TRASH_OPENAI_BASE_URL=https://your-openai-compatible-endpoint/v1
+```
+
+- `EMO_TRASH_OPENAI_BASE_URL` 可选，用于兼容 OpenAI API 格式的第三方模型服务。
+- 未配置这些变量时，会自动回退到内置规则识别，不影响主流程。
+- 原始文本仍不会写入 SQLite，只保存识别后的元数据。
+- 可以直接复制 `.env.example` 为 `.env` 或 `.env.local`，应用启动时会自动加载。
+
 ## 验证命令
 
 ```bash

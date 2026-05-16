@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3'
 import type { EmotionTag, GardenItem, ReleaseEmotionInput } from '../../../preload/api'
+import { emotionAnalysisMetadataSchema, getTimeContextLabel } from '../../../shared/emotionAnalysis'
 import { enrichGardenItems } from '../../../shared/emotionInsights'
 
 type GardenRow = {
@@ -11,6 +12,13 @@ type GardenRow = {
   color_hex: string
   growth_stage: number
   emotion_tag: EmotionTag
+  emotion_intensity?: string | null
+  trigger_scene?: string | null
+  guidance_question?: string | null
+  suggested_labels?: string | null
+  analysis_confidence?: number | null
+  analysis_source?: string | null
+  source_model?: string | null
 }
 
 export class EmotionRepository {
@@ -31,13 +39,34 @@ export class EmotionRepository {
             color_hex,
             growth_stage,
             emotion_tag,
+            emotion_intensity,
+            trigger_scene,
+            guidance_question,
+            suggested_labels,
+            analysis_confidence,
+            analysis_source,
+            source_model,
             released_on,
             released_hour
           )
-          VALUES (?, ?, ?, 1, ?, ?, ?)
+          VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
       )
-      .run(timestamp, input.flowerType, input.colorHex, input.emotionTag, releasedOn, releasedHour)
+      .run(
+        timestamp,
+        input.flowerType,
+        input.colorHex,
+        input.emotionTag,
+        input.analysis.emotionIntensity,
+        input.analysis.triggerScene,
+        input.analysis.guidanceQuestion,
+        JSON.stringify(input.analysis.suggestedLabels),
+        input.analysis.confidence,
+        input.analysis.source,
+        input.analysis.sourceModel,
+        releasedOn,
+        releasedHour
+      )
 
     return this.findById(Number(result.lastInsertRowid))
   }
@@ -46,7 +75,9 @@ export class EmotionRepository {
     const rows = this.database
       .prepare(
         `
-          SELECT id, timestamp, released_on, released_hour, flower_type, color_hex, growth_stage, emotion_tag
+          SELECT id, timestamp, released_on, released_hour, flower_type, color_hex, growth_stage, emotion_tag,
+                 emotion_intensity, trigger_scene, guidance_question, suggested_labels,
+                 analysis_confidence, analysis_source, source_model
           FROM digital_garden
           ORDER BY timestamp DESC, id DESC
           LIMIT ?
@@ -61,7 +92,9 @@ export class EmotionRepository {
     const rows = this.database
       .prepare(
         `
-          SELECT id, timestamp, released_on, released_hour, flower_type, color_hex, growth_stage, emotion_tag
+          SELECT id, timestamp, released_on, released_hour, flower_type, color_hex, growth_stage, emotion_tag,
+                 emotion_intensity, trigger_scene, guidance_question, suggested_labels,
+                 analysis_confidence, analysis_source, source_model
           FROM digital_garden
           ORDER BY timestamp DESC, id DESC
         `
@@ -94,7 +127,9 @@ export class EmotionRepository {
     const row = this.database
       .prepare(
         `
-          SELECT id, timestamp, released_on, released_hour, flower_type, color_hex, growth_stage, emotion_tag
+          SELECT id, timestamp, released_on, released_hour, flower_type, color_hex, growth_stage, emotion_tag,
+                 emotion_intensity, trigger_scene, guidance_question, suggested_labels,
+                 analysis_confidence, analysis_source, source_model
           FROM digital_garden
           WHERE id = ?
         `
@@ -109,6 +144,26 @@ export class EmotionRepository {
   }
 
   private mapRow(row: GardenRow): GardenItem {
+    const parsedLabels = (() => {
+      try {
+        return JSON.parse(row.suggested_labels ?? '[]') as string[]
+      } catch {
+        return []
+      }
+    })()
+
+    const analysis = emotionAnalysisMetadataSchema.safeParse({
+      emotionIntensity: row.emotion_intensity ?? 'moderate',
+      triggerScene: row.trigger_scene ?? '日常情绪波动',
+      guidanceQuestion: row.guidance_question ?? '发生了什么让你有这样的感受？',
+      suggestedLabels: parsedLabels,
+      confidence: row.analysis_confidence ?? 0,
+      timeContextHour: row.released_hour,
+      timeContextLabel: getTimeContextLabel(row.released_hour),
+      source: row.analysis_source ?? 'rule-fallback',
+      sourceModel: row.source_model ?? 'built-in-rules'
+    })
+
     return {
       id: row.id,
       timestamp: row.timestamp,
@@ -117,7 +172,8 @@ export class EmotionRepository {
       flowerType: row.flower_type,
       colorHex: row.color_hex,
       growthStage: row.growth_stage,
-      emotionTag: row.emotion_tag
+      emotionTag: row.emotion_tag,
+      analysis: analysis.success ? analysis.data : undefined
     }
   }
 }

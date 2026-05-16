@@ -15,6 +15,8 @@ export interface FlowerAsset {
   textureUrl: string
 }
 
+let cachedFlowerAssets: FlowerAsset[] | null = null
+
 function drawPixel(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -78,30 +80,27 @@ function buildPlaceholderFlowerTexture(index: number): FlowerAsset {
 }
 
 export function getFlowerAssets(): FlowerAsset[] {
-  return emotionDefinitions.map((meta) => ({
-    ...meta,
-    textureUrl: `/flowers/flower-${meta.flowerType}.png`
-  }))
+  if (!cachedFlowerAssets) {
+    cachedFlowerAssets = emotionDefinitions.map((_, index) => buildPlaceholderFlowerTexture(index))
+  }
+
+  return cachedFlowerAssets
 }
 
 export function createPlaceholderFlowerAssets(): FlowerAsset[] {
-  return emotionDefinitions.map((_, index) => buildPlaceholderFlowerTexture(index))
+  return getFlowerAssets()
 }
 
 export function getFlowerAssetByType(flowerType: number): FlowerAsset {
   const meta = getEmotionDefinitionByFlowerType(flowerType)
-  return (
-    createPlaceholderFlowerAssets().find((asset) => asset.flowerType === meta.flowerType) ??
-    createPlaceholderFlowerAssets()[0]
-  )
+  const assets = getFlowerAssets()
+  return assets.find((asset) => asset.flowerType === meta.flowerType) ?? assets[0]
 }
 
 export function getFlowerAssetByTag(emotionTag: EmotionTag): FlowerAsset {
   const meta = getEmotionDefinitionByTag(emotionTag)
-  return (
-    createPlaceholderFlowerAssets().find((asset) => asset.emotionTag === meta.emotionTag) ??
-    createPlaceholderFlowerAssets()[0]
-  )
+  const assets = getFlowerAssets()
+  return assets.find((asset) => asset.emotionTag === meta.emotionTag) ?? assets[0]
 }
 
 export function ensureNearestTexture(texture: Texture): Texture {

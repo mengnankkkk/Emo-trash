@@ -7,8 +7,29 @@ import type {
   EmotionStatsSummary,
   EmotionTimelineEntry,
   GardenGrowthSnapshot,
-  GardenItem
+  GardenItem,
+  ReleaseEmotionInput
 } from '../../src/renderer/src/types/emotion'
+
+const draftAnalysis: ReleaseEmotionInput = {
+  textLength: 8,
+  exclamationDensity: 0.1,
+  emphasisLevel: 4,
+  flowerType: 1,
+  colorHex: '#f87171',
+  emotionTag: 'anger',
+  analysis: {
+    emotionIntensity: 'moderate',
+    triggerScene: '工作压力',
+    guidanceQuestion: '这件事里最让你生气的瞬间是什么？',
+    suggestedLabels: ['生气', '委屈'],
+    confidence: 0.82,
+    timeContextHour: 20,
+    timeContextLabel: '晚上 18:00 - 22:59',
+    source: 'ai',
+    sourceModel: 'test-model'
+  }
+}
 
 const gardenItems: GardenItem[] = [
   {
@@ -85,6 +106,7 @@ vi.mock('../../src/renderer/src/features/ritual/RitualCanvas', () => ({
 
 vi.mock('../../src/renderer/src/hooks/useEmotionApi', () => ({
   useEmotionApi: () => ({
+    analyzeEmotion: vi.fn().mockResolvedValue(draftAnalysis),
     listGarden: vi.fn().mockResolvedValue(gardenItems),
     releaseEmotion: vi.fn().mockResolvedValue(gardenItems),
     getEmotionStats: vi.fn().mockResolvedValue(statsSummary),

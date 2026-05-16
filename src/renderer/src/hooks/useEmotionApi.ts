@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import type {
+  EmotionAnalysisInput,
   EmotionStatsRange,
   EmotionTag,
   EmotionTimelineQuery,
@@ -9,11 +10,12 @@ import type {
   EmotionStatsSummary,
   EmotionTimelineEntry
 } from '../types/emotion'
-import { extractEmotionFeatures } from '../lib/extractEmotionFeatures'
+import type { ReleaseEmotionInput } from '../../../preload/api'
 import { getRuntimeApi } from '../lib/runtimeApi'
 
 export function useEmotionApi(): {
-  releaseEmotion: (text: string) => Promise<GardenItem[]>
+  analyzeEmotion: (text: string) => Promise<ReleaseEmotionInput>
+  releaseEmotion: (input: ReleaseEmotionInput) => Promise<GardenItem[]>
   listGarden: () => Promise<GardenItem[]>
   getEmotionStats: (rangeDays: EmotionStatsRange) => Promise<EmotionStatsSummary>
   getGardenGrowth: () => Promise<GardenGrowthSnapshot>
@@ -23,16 +25,19 @@ export function useEmotionApi(): {
   ) => Promise<EmotionCalendarDay[]>
   listEmotionTimeline: (query?: Partial<EmotionTimelineQuery>) => Promise<EmotionTimelineEntry[]>
 } {
-  const releaseEmotion = useCallback(async (text: string): Promise<GardenItem[]> => {
-    const features = extractEmotionFeatures(text)
-    const api = getRuntimeApi()
+  const analyzeEmotion = useCallback(async (text: string): Promise<ReleaseEmotionInput> => {
+    const input: EmotionAnalysisInput = { text }
+    return getRuntimeApi().analyzeEmotion(input)
+  }, [])
 
+  const releaseEmotion = useCallback(async (input: ReleaseEmotionInput): Promise<GardenItem[]> => {
+    const api = getRuntimeApi()
     await api.triggerShake({
-      intensity: Math.min(28, 10 + features.emphasisLevel),
+      intensity: Math.min(28, 10 + input.emphasisLevel),
       durationMs: 420
     })
 
-    return api.releaseEmotion(features)
+    return api.releaseEmotion(input)
   }, [])
 
   const listGarden = useCallback(() => {
@@ -56,6 +61,7 @@ export function useEmotionApi(): {
   }, [])
 
   return {
+    analyzeEmotion,
     releaseEmotion,
     listGarden,
     getEmotionStats,

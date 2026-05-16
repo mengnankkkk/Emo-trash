@@ -20,10 +20,22 @@ import {
   toDateKey,
   toHour
 } from '../../shared/emotionInsights'
+import { EmotionAnalysisService } from './emotionAnalysisService'
 import { EmotionRepository } from '../db/repositories/emotionRepository'
 
 export class ReleaseService {
-  constructor(private readonly emotionRepository: EmotionRepository) {}
+  constructor(
+    private readonly emotionRepository: EmotionRepository,
+    private readonly emotionAnalysisService?: EmotionAnalysisService
+  ) {}
+
+  analyzeEmotion(text: string) {
+    if (!this.emotionAnalysisService) {
+      throw new Error('EmotionAnalysisService is not configured')
+    }
+
+    return this.emotionAnalysisService.analyze(text)
+  }
 
   releaseEmotion(input: ReleaseEmotionInput): GardenItem[] {
     const now = new Date()

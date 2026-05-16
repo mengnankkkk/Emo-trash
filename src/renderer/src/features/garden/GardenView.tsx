@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GardenGrowthSnapshot, GardenItem } from '../../types/emotion'
-import {
-  createPlaceholderFlowerAssets,
-  getFlowerAssetByType,
-  getFlowerAssets
-} from '../../lib/flowerAssets'
+import { getFlowerAssetByType, getFlowerAssets } from '../../lib/flowerAssets'
 
 interface GardenViewProps {
   items: GardenItem[]
@@ -28,12 +24,7 @@ function GardenView({ items, growthSnapshot }: GardenViewProps): React.JSX.Eleme
   const hydratedRef = useRef(false)
   const [sproutingIds, setSproutingIds] = useState<Set<number>>(new Set())
   const [swayingIds, setSwayingIds] = useState<Set<number>>(new Set())
-  const flowerAssets = useMemo(() => {
-    const assets = getFlowerAssets()
-    return assets.every((asset) => asset.textureUrl.startsWith('/flowers/'))
-      ? createPlaceholderFlowerAssets()
-      : assets
-  }, [])
+  const flowerAssets = useMemo(() => getFlowerAssets(), [])
 
   useEffect(() => {
     const nextIds = new Set(items.map((item) => item.id))

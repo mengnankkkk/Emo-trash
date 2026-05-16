@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { emoTrashChannels } from './api'
 import type {
+  EmotionAnalysisInput,
   EmotionStatsRange,
   EmotionTag,
   EmotionTimelineQuery,
@@ -11,6 +12,9 @@ import type {
 } from './api'
 
 const api: EmoTrashApi = {
+  analyzeEmotion(input: EmotionAnalysisInput) {
+    return ipcRenderer.invoke(emoTrashChannels.analyzeEmotion, input)
+  },
   releaseEmotion(input: ReleaseEmotionInput) {
     return ipcRenderer.invoke(emoTrashChannels.releaseEmotion, input)
   },

@@ -10,6 +10,13 @@ export const DIGITAL_GARDEN_SCHEMA = `
     color_hex TEXT NOT NULL,
     growth_stage INTEGER DEFAULT 1,
     emotion_tag TEXT DEFAULT 'fatigue',
+    emotion_intensity TEXT DEFAULT 'moderate',
+    trigger_scene TEXT DEFAULT '',
+    guidance_question TEXT DEFAULT '',
+    suggested_labels TEXT DEFAULT '[]',
+    analysis_confidence REAL DEFAULT 0,
+    analysis_source TEXT DEFAULT 'rule-fallback',
+    source_model TEXT DEFAULT 'built-in-rules',
     released_on TEXT DEFAULT '',
     released_hour INTEGER DEFAULT 0
   );
@@ -77,6 +84,13 @@ function backfillDerivedFields(database: Database.Database): void {
 export function initializeSchema(database: Database.Database): void {
   database.exec(DIGITAL_GARDEN_SCHEMA)
   ensureColumn(database, 'emotion_tag', "emotion_tag TEXT DEFAULT 'fatigue'")
+  ensureColumn(database, 'emotion_intensity', "emotion_intensity TEXT DEFAULT 'moderate'")
+  ensureColumn(database, 'trigger_scene', "trigger_scene TEXT DEFAULT ''")
+  ensureColumn(database, 'guidance_question', "guidance_question TEXT DEFAULT ''")
+  ensureColumn(database, 'suggested_labels', "suggested_labels TEXT DEFAULT '[]'")
+  ensureColumn(database, 'analysis_confidence', 'analysis_confidence REAL DEFAULT 0')
+  ensureColumn(database, 'analysis_source', "analysis_source TEXT DEFAULT 'rule-fallback'")
+  ensureColumn(database, 'source_model', "source_model TEXT DEFAULT 'built-in-rules'")
   ensureColumn(database, 'released_on', "released_on TEXT DEFAULT ''")
   ensureColumn(database, 'released_hour', 'released_hour INTEGER DEFAULT 0')
   backfillDerivedFields(database)

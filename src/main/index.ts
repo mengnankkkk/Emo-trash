@@ -1,9 +1,12 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
+import { loadEnvConfig } from './config/loadEnv'
 import { closeDatabase, initDatabase } from './db'
 import { registerEmotionIpc } from './ipc/emotionIpc'
 import { createMainWindow, getMainWindow } from './windows/mainWindow'
+
+loadEnvConfig()
 
 const testingUserDataDir = process.env.EMO_TRASH_USER_DATA_DIR
 

@@ -1,9 +1,11 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { getDatabase } from '../db'
 import { EmotionRepository } from '../db/repositories/emotionRepository'
+import { EmotionAnalysisService } from '../services/emotionAnalysisService'
 import { ReleaseService } from '../services/releaseService'
 import { WindowEffectService } from '../services/windowEffectService'
 import {
+  emotionAnalysisInputSchema,
   emoTrashChannels,
   emotionStatsRangeSchema,
   emotionTagSchema,
@@ -18,8 +20,14 @@ interface RegisterEmotionIpcOptions {
 
 export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): void {
   const emotionRepository = new EmotionRepository(getDatabase())
-  const releaseService = new ReleaseService(emotionRepository)
+  const emotionAnalysisService = new EmotionAnalysisService()
+  const releaseService = new ReleaseService(emotionRepository, emotionAnalysisService)
   const windowEffectService = new WindowEffectService()
+
+  ipcMain.handle(emoTrashChannels.analyzeEmotion, async (_event, payload) => {
+    const input = emotionAnalysisInputSchema.parse(payload)
+    return emotionAnalysisService.analyze(input.text)
+  })
 
   ipcMain.handle(emoTrashChannels.releaseEmotion, (_event, payload) => {
     const input = releaseEmotionInputSchema.parse(payload)

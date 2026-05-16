@@ -1,7 +1,13 @@
 import { z } from 'zod'
 import { emotionTagValues } from '../shared/emotionMeta'
+import {
+  emotionAnalysisMetadataSchema,
+  emotionAnalysisSchema,
+  emotionIntensitySchema
+} from '../shared/emotionAnalysis'
 
 export const emoTrashChannels = {
+  analyzeEmotion: 'emotion:analyze',
   releaseEmotion: 'emotion:release',
   listGarden: 'garden:list',
   triggerShake: 'window:shake',
@@ -12,16 +18,11 @@ export const emoTrashChannels = {
 } as const
 
 export const emotionTagSchema = z.enum(emotionTagValues)
-export const emotionStatsRangeSchema = z.union([z.literal(7), z.literal(30)])
-
-export const releaseEmotionInputSchema = z.object({
-  textLength: z.number().int().nonnegative(),
-  exclamationDensity: z.number().min(0).max(1),
-  emphasisLevel: z.number().int().min(0).max(12),
-  flowerType: z.number().int().min(1).max(6),
-  colorHex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-  emotionTag: emotionTagSchema
+export const emotionAnalysisInputSchema = z.object({
+  text: z.string().trim().min(1).max(4000)
 })
+export const emotionStatsRangeSchema = z.union([z.literal(7), z.literal(30)])
+export const releaseEmotionInputSchema = emotionAnalysisSchema
 
 export const gardenItemSchema = z.object({
   id: z.number().int().positive(),
@@ -31,7 +32,8 @@ export const gardenItemSchema = z.object({
   flowerType: z.number().int().min(1).max(6),
   colorHex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   growthStage: z.number().int().min(1).max(3),
-  emotionTag: emotionTagSchema
+  emotionTag: emotionTagSchema,
+  analysis: emotionAnalysisMetadataSchema.optional()
 })
 
 export const emotionBreakdownItemSchema = z.object({
@@ -90,6 +92,8 @@ export const shakeWindowInputSchema = z.object({
 })
 
 export type EmotionTag = z.infer<typeof emotionTagSchema>
+export type EmotionAnalysisInput = z.infer<typeof emotionAnalysisInputSchema>
+export type EmotionIntensity = z.infer<typeof emotionIntensitySchema>
 export type EmotionStatsRange = z.infer<typeof emotionStatsRangeSchema>
 export type ReleaseEmotionInput = z.infer<typeof releaseEmotionInputSchema>
 export type GardenItem = z.infer<typeof gardenItemSchema>
@@ -103,6 +107,7 @@ export type EmotionTimelineEntry = GardenItem
 export type ShakeWindowInput = z.infer<typeof shakeWindowInputSchema>
 
 export interface EmoTrashApi {
+  analyzeEmotion(input: EmotionAnalysisInput): Promise<ReleaseEmotionInput>
   releaseEmotion(input: ReleaseEmotionInput): Promise<GardenItem[]>
   listGarden(): Promise<GardenItem[]>
   getEmotionStats(rangeDays: EmotionStatsRange): Promise<EmotionStatsSummary>

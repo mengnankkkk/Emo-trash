@@ -1,16 +1,6 @@
 import type {
-  EmotionCalendarDay,
-  EmotionStatsRange,
-  EmotionStatsSummary,
-  EmotionTag,
-  EmotionTimelineEntry,
-  EmotionTimelineQuery,
-  GardenGrowthSnapshot,
-  GardenItem
-} from '../../../preload/api'
-import type { RitualEffect } from '../../../shared/emotionMeta'
-
-export type {
+  EmotionAnalysisInput,
+  EmotionIntensity,
   EmotionCalendarDay,
   EmotionStatsRange,
   EmotionStatsSummary,
@@ -19,14 +9,21 @@ export type {
   EmotionTimelineQuery,
   GardenGrowthSnapshot,
   GardenItem,
-  RitualEffect
-}
+  ReleaseEmotionInput
+} from '../../../preload/api'
+import type { RitualEffect } from '../../../shared/emotionMeta'
 
-export interface EmotionFeatureInput {
-  textLength: number
-  exclamationDensity: number
-  emphasisLevel: number
-  flowerType: number
-  colorHex: string
-  emotionTag: EmotionTag
+export type {
+  EmotionCalendarDay,
+  EmotionAnalysisInput,
+  EmotionIntensity,
+  EmotionStatsRange,
+  EmotionStatsSummary,
+  EmotionTag,
+  EmotionTimelineEntry,
+  EmotionTimelineQuery,
+  GardenGrowthSnapshot,
+  GardenItem,
+  ReleaseEmotionInput,
+  RitualEffect
 }

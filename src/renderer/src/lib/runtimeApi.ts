@@ -1,4 +1,5 @@
 import type {
+  EmotionAnalysisInput,
   EmotionStatsRange,
   EmotionTag,
   EmotionTimelineQuery,
@@ -7,6 +8,7 @@ import type {
   ReleaseEmotionInput,
   ShakeWindowInput
 } from '../../../preload/api'
+import { buildRuleBasedEmotionAnalysis } from '../../../shared/emotionAnalysis'
 import {
   buildEmotionCalendar,
   buildEmotionStatsSummary,
@@ -34,6 +36,12 @@ function saveGarden(items: GardenItem[]): void {
 }
 
 const browserPreviewApi: EmoTrashApi = {
+  async analyzeEmotion(input: EmotionAnalysisInput): Promise<ReleaseEmotionInput> {
+    return buildRuleBasedEmotionAnalysis(input.text, {
+      source: 'browser-preview',
+      sourceModel: 'browser-preview-rules'
+    })
+  },
   async releaseEmotion(input: ReleaseEmotionInput): Promise<GardenItem[]> {
     const now = new Date()
     const nextItem: GardenItem = {
