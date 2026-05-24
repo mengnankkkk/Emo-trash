@@ -23,7 +23,7 @@ export const emotionTagSchema = z.enum(emotionTagValues)
 export const emotionAnalysisInputSchema = z.object({
   text: z.string().trim().min(1).max(4000)
 })
-export const emotionStatsRangeSchema = z.union([z.literal(7), z.literal(30)])
+export const emotionStatsRangeSchema = z.literal(7)
 export const releaseEmotionInputSchema = emotionAnalysisSchema
 
 export const gardenItemSchema = z.object({

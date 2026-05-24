@@ -7,9 +7,13 @@ interface EmotionTrendChartProps {
 
 function EmotionTrendChart({ trend }: EmotionTrendChartProps): React.JSX.Element {
   const maxCount = Math.max(...trend.map((item) => item.count), 1)
+  const columnCount = trend.length <= 7 ? trend.length : Math.min(trend.length, 15)
 
   return (
-    <div className="grid grid-cols-7 gap-2 md:grid-cols-10 xl:grid-cols-[repeat(15,minmax(0,1fr))]">
+    <div
+      className="grid gap-2"
+      style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+    >
       {trend.map((item) => {
         const asset = item.dominantEmotionTag ? getFlowerAssetByTag(item.dominantEmotionTag) : null
         const height =

@@ -25,8 +25,8 @@ function AchievementCard({ achievement }: { achievement: AchievementStatus }): R
       className={[
         'flex flex-col gap-3 rounded-2xl border p-4 transition',
         achievement.unlocked
-          ? 'border-emerald-300/30 bg-emerald-400/10'
-          : 'border-white/10 bg-white/[0.03]'
+          ? 'achievement-card--unlocked border-emerald-300/30 bg-emerald-400/10'
+          : 'border-white/10 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]'
       ].join(' ')}
     >
       <div className="flex items-start justify-between gap-2">

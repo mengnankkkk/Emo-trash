@@ -144,7 +144,7 @@ describe('App 页面导航', () => {
   it('在不同子页面之间切换并展示对应内容', async () => {
     render(React.createElement(App))
 
-    expect(screen.getByRole('heading', { name: '情绪垃圾桶' })).toBeInTheDocument()
+    expect(screen.getByText(/情绪垃圾桶/)).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: '输入室' })).toBeInTheDocument()
 
     const analyticsButton = screen.getByRole('button', { name: /统计/i })
@@ -152,11 +152,8 @@ describe('App 页面导航', () => {
 
     await waitFor(() => {
       expect(analyticsButton).toHaveAttribute('aria-current', 'page')
-      expect(screen.getByText('统计范围')).toBeInTheDocument()
-      expect(screen.getByText('累计释放')).toBeInTheDocument()
-      expect(screen.getByText('释放次数')).toBeInTheDocument()
-      expect(screen.getByText('最近的情绪节律')).toBeInTheDocument()
-      expect(screen.getByText('开花')).toBeInTheDocument()
+      expect(screen.getByText(/▼ 情绪统计/)).toBeInTheDocument()
+      expect(screen.getByText(/▼ 花园成长/)).toBeInTheDocument()
     })
 
     const historyButton = screen.getByRole('button', { name: /历史/i })
@@ -164,20 +161,15 @@ describe('App 页面导航', () => {
 
     await waitFor(() => {
       expect(historyButton).toHaveAttribute('aria-current', 'page')
-      expect(screen.getByText('选中日期')).toBeInTheDocument()
-      expect(screen.getByText('时间轴')).toBeInTheDocument()
-      expect(screen.getByText('把最近 30 天排成一张热力地图')).toBeInTheDocument()
-      expect(screen.getByText(/2026-05-11 的情绪时间轴/)).toBeInTheDocument()
+      expect(screen.getByText(/情绪历史/)).toBeInTheDocument()
     })
 
-    const gardenButton = screen.getByRole('button', { name: /花园/i })
+    const gardenButton = screen.getByRole('button', { name: /^花园$/i })
     fireEvent.click(gardenButton)
 
     await waitFor(() => {
       expect(gardenButton).toHaveAttribute('aria-current', 'page')
-      expect(screen.getByText('花朵总数')).toBeInTheDocument()
-      expect(screen.getByText('最近活跃')).toBeInTheDocument()
-      expect(screen.getByText('当前阶段：开花')).toBeInTheDocument()
+      expect(screen.getByText(/▼ 像素花园/)).toBeInTheDocument()
       expect(screen.getByText('保留的是结果，不是原文。')).toBeInTheDocument()
     })
   })

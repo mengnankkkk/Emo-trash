@@ -1,20 +1,13 @@
 import EmotionTrendChart from './EmotionTrendChart'
 import { getFlowerAssetByTag } from '../../lib/flowerAssets'
-import type { EmotionStatsRange, EmotionStatsSummary } from '../../types/emotion'
+import type { EmotionStatsSummary } from '../../types/emotion'
 
 interface EmotionStatsPanelProps {
   summary: EmotionStatsSummary | null
-  rangeDays: EmotionStatsRange
-  onRangeChange: (rangeDays: EmotionStatsRange) => void
   loading: boolean
 }
 
-function EmotionStatsPanel({
-  summary,
-  rangeDays,
-  onRangeChange,
-  loading
-}: EmotionStatsPanelProps): React.JSX.Element {
+function EmotionStatsPanel({ summary, loading }: EmotionStatsPanelProps): React.JSX.Element {
   const hasData = !!summary
 
   return (
@@ -24,26 +17,9 @@ function EmotionStatsPanel({
           <p className="text-xs uppercase tracking-[0.28em] text-white/30">情绪统计</p>
           <h3 className="mt-2 text-2xl font-semibold text-white">最近的情绪节律</h3>
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/20 p-1">
-          {[7, 30].map((value) => {
-            const selected = rangeDays === value
-            return (
-              <button
-                key={value}
-                type="button"
-                data-stats-range={value}
-                data-selected={selected ? 'true' : 'false'}
-                onClick={() => onRangeChange(value as EmotionStatsRange)}
-                className={[
-                  'rounded-full px-3 py-1.5 text-xs font-semibold transition',
-                  selected ? 'bg-rose-400/20 text-rose-100' : 'text-white/45 hover:text-white'
-                ].join(' ')}
-              >
-                最近 {value} 天
-              </button>
-            )
-          })}
-        </div>
+        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs font-semibold text-rose-100">
+          最近 7 天
+        </span>
       </div>
 
       {!hasData ? (

@@ -63,24 +63,12 @@ const timelineItems: EmotionTimelineEntry[] = [
 ]
 
 describe('emotion dashboard components', () => {
-  it('切换统计范围并展示核心指标', () => {
-    const onRangeChange = vi.fn()
-
-    render(
-      <EmotionStatsPanel
-        summary={summary}
-        rangeDays={7}
-        onRangeChange={onRangeChange}
-        loading={false}
-      />
-    )
+  it('展示核心指标和固定 7 天标签', () => {
+    render(<EmotionStatsPanel summary={summary} loading={false} />)
 
     expect(screen.getByText('最近的情绪节律')).toBeInTheDocument()
     expect(screen.getByText('夜间 21:00 - 21:59')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: '最近 30 天' }))
-
-    expect(onRangeChange).toHaveBeenCalledWith(30)
+    expect(screen.getByText('最近 7 天')).toBeInTheDocument()
   })
 
   it('点击热力图日期并展示时间轴 AI 元数据', () => {
