@@ -45,6 +45,8 @@ const timelineItems: EmotionTimelineEntry[] = [
     flowerType: 1,
     colorHex: '#f87171',
     growthStage: 2,
+    totalWaterings: 3,
+    lastWateredOn: '2026-05-11',
     emotionTag: 'anger',
     analysis: {
       emotionIntensity: 'strong',

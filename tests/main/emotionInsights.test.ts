@@ -19,6 +19,8 @@ function createItem(
 ): GardenItem {
   return {
     growthStage: 1,
+    totalWaterings: 1,
+    lastWateredOn: partial.releasedOn ?? '',
     ...partial
   }
 }
@@ -79,7 +81,7 @@ describe('emotionInsights', () => {
     vi.useRealTimers()
   })
 
-  it('根据连续活跃和花朵年龄推进成长阶段', () => {
+  it('根据浇水次数和花朵年龄推进成长阶段', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-11T08:00:00'))
 
@@ -91,7 +93,9 @@ describe('emotionInsights', () => {
         releasedHour: 7,
         flowerType: 2,
         colorHex: '#c084fc',
-        emotionTag: 'collapse'
+        emotionTag: 'collapse',
+        totalWaterings: 2,
+        lastWateredOn: '2026-05-11'
       }),
       createItem({
         id: 2,
@@ -100,7 +104,9 @@ describe('emotionInsights', () => {
         releasedHour: 7,
         flowerType: 5,
         colorHex: '#34d399',
-        emotionTag: 'calm'
+        emotionTag: 'calm',
+        totalWaterings: 5,
+        lastWateredOn: '2026-05-11'
       }),
       createItem({
         id: 3,
@@ -109,7 +115,9 @@ describe('emotionInsights', () => {
         releasedHour: 7,
         flowerType: 6,
         colorHex: '#fb7185',
-        emotionTag: 'relief'
+        emotionTag: 'relief',
+        totalWaterings: 9,
+        lastWateredOn: '2026-05-11'
       }),
       createItem({
         id: 4,
@@ -118,16 +126,20 @@ describe('emotionInsights', () => {
         releasedHour: 7,
         flowerType: 4,
         colorHex: '#60a5fa',
-        emotionTag: 'fatigue'
+        emotionTag: 'fatigue',
+        totalWaterings: 14,
+        lastWateredOn: '2026-05-11'
       }),
       createItem({
         id: 5,
-        timestamp: '2026-05-07 07:00:00',
-        releasedOn: '2026-05-07',
+        timestamp: '2026-05-04 07:00:00',
+        releasedOn: '2026-05-04',
         releasedHour: 7,
         flowerType: 1,
         colorHex: '#f87171',
-        emotionTag: 'anger'
+        emotionTag: 'anger',
+        totalWaterings: 14,
+        lastWateredOn: '2026-05-11'
       })
     ]
 
@@ -136,9 +148,12 @@ describe('emotionInsights', () => {
 
     expect(snapshot.level).toBe(2)
     expect(snapshot.levelLabel).toBe('开花')
-    expect(snapshot.currentStreakDays).toBe(5)
+    expect(snapshot.currentStreakDays).toBe(4)
     expect(enriched[0].growthStage).toBe(2)
-    expect(enriched[4].growthStage).toBe(3)
+    expect(enriched[1].growthStage).toBe(3)
+    expect(enriched[2].growthStage).toBe(3)
+    expect(enriched[3].growthStage).toBe(4)
+    expect(enriched[4].growthStage).toBe(5)
 
     vi.useRealTimers()
   })

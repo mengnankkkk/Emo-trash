@@ -6,15 +6,26 @@ import type { GardenGrowthSnapshot, GardenItem } from '../../src/renderer/src/ty
 
 const snapshot: GardenGrowthSnapshot = {
   level: 2,
-  levelLabel: '开花期',
-  seasonKey: 'stable',
-  seasonLabel: '稳定生长',
+  levelLabel: '开花',
+  seasonKey: 'bloom',
+  seasonLabel: '开花季',
+  seasonalTheme: {
+    calendarSeason: 'spring',
+    calendarSeasonLabel: '春',
+    gardenSeason: 'bloom',
+    gardenSeasonLabel: '开花季',
+    combinedLabel: '春日开花',
+    combinedKey: 'spring-bloom',
+    moodTint: 'rgba(52, 211, 153, 0.08)'
+  },
   currentStreakDays: 4,
   longestStreakDays: 6,
   totalBlooms: 12,
   recentReleaseCount: 5,
+  witheredCount: 0,
+  manualWateringsRemaining: 3,
   progressToNextLevel: 0.68,
-  nextLevelLabel: '盛放期'
+  nextLevelLabel: '盛放'
 }
 
 const baseItem: GardenItem = {
@@ -23,6 +34,8 @@ const baseItem: GardenItem = {
   flowerType: 1,
   colorHex: '#f87171',
   growthStage: 2,
+  totalWaterings: 3,
+  lastWateredOn: '2026-05-11',
   emotionTag: 'anger',
   releasedOn: '2026-05-11',
   releasedHour: 20
@@ -53,6 +66,7 @@ describe('GardenView 动效状态', () => {
       id: 2,
       flowerType: 3,
       growthStage: 3,
+      totalWaterings: 5,
       emotionTag: 'anxiety',
       colorHex: '#fbbf24'
     }

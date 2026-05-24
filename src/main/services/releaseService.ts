@@ -1,4 +1,5 @@
 import type {
+  AchievementSummary,
   EmotionCalendarDay,
   EmotionStatsRange,
   EmotionStatsSummary,
@@ -7,7 +8,8 @@ import type {
   EmotionTimelineQuery,
   GardenGrowthSnapshot,
   GardenItem,
-  ReleaseEmotionInput
+  ReleaseEmotionInput,
+  WaterFlowerResult
 } from '../../preload/api'
 import {
   buildEmotionCalendar,
@@ -20,8 +22,11 @@ import {
   toDateKey,
   toHour
 } from '../../shared/emotionInsights'
+import { buildAchievementSummary } from '../../shared/achievements'
 import { EmotionAnalysisService } from './emotionAnalysisService'
 import { EmotionRepository } from '../db/repositories/emotionRepository'
+
+const DAILY_MANUAL_WATERING_LIMIT = 3
 
 export class ReleaseService {
   constructor(
@@ -43,6 +48,25 @@ export class ReleaseService {
     return this.listGarden()
   }
 
+  waterFlower(flowerId: number): WaterFlowerResult {
+    const now = new Date()
+    const dateKey = toDateKey(now)
+
+    if (!this.emotionRepository.flowerExists(flowerId)) {
+      return { success: false, remaining: this.getRemainingManualWaterings(dateKey), garden: this.listGarden() }
+    }
+
+    const remaining = this.getRemainingManualWaterings(dateKey)
+    if (remaining <= 0) {
+      return { success: false, remaining: 0, garden: this.listGarden() }
+    }
+
+    this.emotionRepository.recordWatering(flowerId, 'manual', dateKey)
+    const nextRemaining = remaining - 1
+
+    return { success: true, remaining: nextRemaining, garden: this.listGarden() }
+  }
+
   listGarden(): GardenItem[] {
     const items = this.emotionRepository.listAllGarden()
     const enrichedItems = enrichGardenItems(items)
@@ -57,7 +81,14 @@ export class ReleaseService {
 
   getGardenGrowth(): GardenGrowthSnapshot {
     const items = this.getEnrichedItems()
-    return buildGardenGrowthSnapshot(items)
+    const now = new Date()
+    const remaining = this.getRemainingManualWaterings(toDateKey(now))
+    return buildGardenGrowthSnapshot(items, remaining, now)
+  }
+
+  getAchievements(): AchievementSummary {
+    const items = this.getEnrichedItems()
+    return buildAchievementSummary(items)
   }
 
   listEmotionCalendar(rangeDays: number, emotionTags: EmotionTag[] = []): EmotionCalendarDay[] {
@@ -68,6 +99,11 @@ export class ReleaseService {
   listEmotionTimeline(query: EmotionTimelineQuery): EmotionTimelineEntry[] {
     const items = this.getEnrichedItems()
     return buildEmotionTimeline(items, query)
+  }
+
+  private getRemainingManualWaterings(dateKey: string): number {
+    const used = this.emotionRepository.getManualWateringCountToday(dateKey)
+    return Math.max(0, DAILY_MANUAL_WATERING_LIMIT - used)
   }
 
   private getEnrichedItems(): GardenItem[] {

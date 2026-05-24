@@ -8,7 +8,9 @@ import type {
   GardenItem,
   EmotionCalendarDay,
   EmotionStatsSummary,
-  EmotionTimelineEntry
+  EmotionTimelineEntry,
+  WaterFlowerResult,
+  AchievementSummary
 } from '../types/emotion'
 import type { ReleaseEmotionInput } from '../../../preload/api'
 import { getRuntimeApi } from '../lib/runtimeApi'
@@ -17,8 +19,10 @@ export function useEmotionApi(): {
   analyzeEmotion: (text: string) => Promise<ReleaseEmotionInput>
   releaseEmotion: (input: ReleaseEmotionInput) => Promise<GardenItem[]>
   listGarden: () => Promise<GardenItem[]>
+  waterFlower: (flowerId: number) => Promise<WaterFlowerResult>
   getEmotionStats: (rangeDays: EmotionStatsRange) => Promise<EmotionStatsSummary>
   getGardenGrowth: () => Promise<GardenGrowthSnapshot>
+  getAchievements: () => Promise<AchievementSummary>
   listEmotionCalendar: (
     rangeDays: number,
     emotionTags?: EmotionTag[]
@@ -44,12 +48,20 @@ export function useEmotionApi(): {
     return getRuntimeApi().listGarden()
   }, [])
 
+  const waterFlower = useCallback((flowerId: number) => {
+    return getRuntimeApi().waterFlower(flowerId)
+  }, [])
+
   const getEmotionStats = useCallback((rangeDays: EmotionStatsRange) => {
     return getRuntimeApi().getEmotionStats(rangeDays)
   }, [])
 
   const getGardenGrowth = useCallback(() => {
     return getRuntimeApi().getGardenGrowth()
+  }, [])
+
+  const getAchievements = useCallback(() => {
+    return getRuntimeApi().getAchievements()
   }, [])
 
   const listEmotionCalendar = useCallback((rangeDays: number, emotionTags: EmotionTag[] = []) => {
@@ -64,8 +76,10 @@ export function useEmotionApi(): {
     analyzeEmotion,
     releaseEmotion,
     listGarden,
+    waterFlower,
     getEmotionStats,
     getGardenGrowth,
+    getAchievements,
     listEmotionCalendar,
     listEmotionTimeline
   }

@@ -11,7 +11,8 @@ import {
   emotionTagSchema,
   emotionTimelineQuerySchema,
   releaseEmotionInputSchema,
-  shakeWindowInputSchema
+  shakeWindowInputSchema,
+  waterFlowerInputSchema
 } from '../../preload/api'
 
 interface RegisterEmotionIpcOptions {
@@ -38,6 +39,11 @@ export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): vo
     return releaseService.listGarden()
   })
 
+  ipcMain.handle(emoTrashChannels.waterFlower, (_event, payload) => {
+    const input = waterFlowerInputSchema.parse(payload)
+    return releaseService.waterFlower(input.flowerId)
+  })
+
   ipcMain.handle(emoTrashChannels.getEmotionStats, (_event, payload) => {
     const rangeDays = emotionStatsRangeSchema.parse(payload)
     return releaseService.getEmotionStats(rangeDays)
@@ -45,6 +51,10 @@ export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): vo
 
   ipcMain.handle(emoTrashChannels.getGardenGrowth, () => {
     return releaseService.getGardenGrowth()
+  })
+
+  ipcMain.handle(emoTrashChannels.getAchievements, () => {
+    return releaseService.getAchievements()
   })
 
   ipcMain.handle(emoTrashChannels.listEmotionCalendar, (_event, payload) => {

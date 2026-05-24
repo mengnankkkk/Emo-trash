@@ -1,4 +1,7 @@
 import type {
+  AchievementCategory,
+  AchievementStatus,
+  AchievementSummary,
   EmotionAnalysisInput,
   EmotionIntensity,
   EmotionCalendarDay,
@@ -9,11 +12,18 @@ import type {
   EmotionTimelineQuery,
   GardenGrowthSnapshot,
   GardenItem,
-  ReleaseEmotionInput
+  ReleaseEmotionInput,
+  SeasonalTheme,
+  WaterFlowerResult
 } from '../../../preload/api'
 import type { RitualEffect } from '../../../shared/emotionMeta'
+import type { CalendarSeason } from '../../../shared/seasonalTheme'
 
 export type {
+  AchievementCategory,
+  AchievementStatus,
+  AchievementSummary,
+  CalendarSeason,
   EmotionCalendarDay,
   EmotionAnalysisInput,
   EmotionIntensity,
@@ -25,5 +35,7 @@ export type {
   GardenGrowthSnapshot,
   GardenItem,
   ReleaseEmotionInput,
-  RitualEffect
+  RitualEffect,
+  SeasonalTheme,
+  WaterFlowerResult
 }

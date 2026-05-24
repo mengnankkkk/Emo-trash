@@ -24,10 +24,21 @@ function GardenGrowthPanel({ snapshot, loading }: GardenGrowthPanelProps): React
           <p className="text-xs uppercase tracking-[0.28em] text-white/30">花园成长</p>
           <h3 className="mt-2 text-2xl font-semibold text-white">{snapshot.levelLabel}</h3>
         </div>
-        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs tracking-[0.2em] text-rose-100/80">
-          {snapshot.seasonLabel}
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs tracking-[0.2em] text-rose-100/80">
+            {snapshot.seasonalTheme?.combinedLabel ?? snapshot.seasonLabel}
+          </span>
+          <span className="text-[10px] text-white/30">
+            剩余浇水 {snapshot.manualWateringsRemaining ?? 0} 次/天
+          </span>
+        </div>
       </div>
+
+      {snapshot.witheredCount > 0 && (
+        <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-200/80">
+          有 {snapshot.witheredCount} 朵花已枯萎，浇水可以让它们重新发芽。
+        </div>
+      )}
 
       <div className="mt-6 grid gap-3 md:grid-cols-2">
         <article className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">

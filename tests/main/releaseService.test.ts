@@ -13,6 +13,8 @@ function createItem(
 ): GardenItem {
   return {
     growthStage: 1,
+    totalWaterings: 1,
+    lastWateredOn: partial.releasedOn ?? '',
     ...partial
   }
 }
@@ -35,8 +37,9 @@ describe('ReleaseService', () => {
       })
     ])
     const syncGrowthStages = vi.fn()
+    const getManualWateringCountToday = vi.fn().mockReturnValue(0)
 
-    const service = new ReleaseService({ createSeed, listAllGarden, syncGrowthStages } as never)
+    const service = new ReleaseService({ createSeed, listAllGarden, syncGrowthStages, getManualWateringCountToday } as never)
 
     const result = service.releaseEmotion({
       textLength: 12,
@@ -102,7 +105,8 @@ describe('ReleaseService', () => {
     const service = new ReleaseService({
       createSeed: vi.fn(),
       listAllGarden: vi.fn().mockReturnValue(items),
-      syncGrowthStages: vi.fn()
+      syncGrowthStages: vi.fn(),
+      getManualWateringCountToday: vi.fn().mockReturnValue(0)
     } as never)
 
     const stats = service.getEmotionStats(7)

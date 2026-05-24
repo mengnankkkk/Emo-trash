@@ -6,7 +6,8 @@ import type {
   EmoTrashApi,
   GardenItem,
   ReleaseEmotionInput,
-  ShakeWindowInput
+  ShakeWindowInput,
+  WaterFlowerResult
 } from '../../../preload/api'
 import { buildRuleBasedEmotionAnalysis } from '../../../shared/emotionAnalysis'
 import {
@@ -19,8 +20,10 @@ import {
   toDateKey,
   toHour
 } from '../../../shared/emotionInsights'
+import { buildAchievementSummary } from '../../../shared/achievements'
 
 const STORAGE_KEY = 'emo-trash-browser-garden'
+const WATERING_KEY = 'emo-trash-browser-waterings'
 
 function readGarden(): GardenItem[] {
   const rawValue = window.localStorage.getItem(STORAGE_KEY)
@@ -33,6 +36,20 @@ function readGarden(): GardenItem[] {
 
 function saveGarden(items: GardenItem[]): void {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+}
+
+function getManualWateringsToday(): number {
+  const raw = window.localStorage.getItem(WATERING_KEY)
+  if (!raw) return 0
+  const data = JSON.parse(raw) as { date: string; count: number }
+  if (data.date !== toDateKey(new Date())) return 0
+  return data.count
+}
+
+function recordManualWatering(): void {
+  const today = toDateKey(new Date())
+  const current = getManualWateringsToday()
+  window.localStorage.setItem(WATERING_KEY, JSON.stringify({ date: today, count: current + 1 }))
 }
 
 const browserPreviewApi: EmoTrashApi = {
@@ -52,6 +69,8 @@ const browserPreviewApi: EmoTrashApi = {
       flowerType: input.flowerType,
       colorHex: input.colorHex,
       growthStage: 1,
+      totalWaterings: 1,
+      lastWateredOn: toDateKey(now),
       emotionTag: input.emotionTag
     }
 
@@ -62,11 +81,37 @@ const browserPreviewApi: EmoTrashApi = {
   async listGarden(): Promise<GardenItem[]> {
     return readGarden().slice(0, 24)
   },
+  async waterFlower(flowerId: number): Promise<WaterFlowerResult> {
+    const used = getManualWateringsToday()
+    const remaining = Math.max(0, 3 - used)
+
+    if (remaining <= 0) {
+      return { success: false, remaining: 0, garden: readGarden().slice(0, 24) }
+    }
+
+    const garden = readGarden()
+    const target = garden.find((item) => item.id === flowerId)
+    if (!target) {
+      return { success: false, remaining, garden: garden.slice(0, 24) }
+    }
+
+    target.totalWaterings += 1
+    target.lastWateredOn = toDateKey(new Date())
+    recordManualWatering()
+
+    const enriched = enrichGardenItems(garden)
+    saveGarden(enriched)
+    return { success: true, remaining: remaining - 1, garden: enriched.slice(0, 24) }
+  },
   async getEmotionStats(rangeDays: EmotionStatsRange) {
     return buildEmotionStatsSummary(readGarden(), rangeDays)
   },
   async getGardenGrowth() {
-    return buildGardenGrowthSnapshot(readGarden())
+    const remaining = Math.max(0, 3 - getManualWateringsToday())
+    return buildGardenGrowthSnapshot(readGarden(), remaining)
+  },
+  async getAchievements() {
+    return buildAchievementSummary(readGarden())
   },
   async listEmotionCalendar(rangeDays: number, emotionTags: EmotionTag[] = []) {
     return buildEmotionCalendar(readGarden(), rangeDays, emotionTags)

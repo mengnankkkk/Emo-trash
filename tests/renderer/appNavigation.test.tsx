@@ -38,6 +38,8 @@ const gardenItems: GardenItem[] = [
     flowerType: 1,
     colorHex: '#f87171',
     growthStage: 2,
+    totalWaterings: 3,
+    lastWateredOn: '2026-05-11',
     emotionTag: 'anger',
     releasedOn: '2026-05-11',
     releasedHour: 20
@@ -72,14 +74,26 @@ const statsSummary: EmotionStatsSummary = {
 
 const growthSnapshot: GardenGrowthSnapshot = {
   level: 2,
-  levelLabel: '开花期',
-  seasonLabel: '稳定生长',
+  levelLabel: '开花',
+  seasonKey: 'bloom',
+  seasonLabel: '开花季',
+  seasonalTheme: {
+    calendarSeason: 'spring',
+    calendarSeasonLabel: '春',
+    gardenSeason: 'bloom',
+    gardenSeasonLabel: '开花季',
+    combinedLabel: '春日开花',
+    combinedKey: 'spring-bloom',
+    moodTint: 'rgba(52, 211, 153, 0.08)'
+  },
   currentStreakDays: 4,
   longestStreakDays: 6,
   totalBlooms: 12,
   recentReleaseCount: 5,
+  witheredCount: 0,
+  manualWateringsRemaining: 3,
   progressToNextLevel: 0.68,
-  nextLevelLabel: '盛放期'
+  nextLevelLabel: '盛放'
 }
 
 const calendarDays: EmotionCalendarDay[] = [
@@ -96,6 +110,8 @@ const timelineItems: EmotionTimelineEntry[] = [
     flowerType: 1,
     colorHex: '#f87171',
     growthStage: 2,
+    totalWaterings: 3,
+    lastWateredOn: '2026-05-11',
     emotionTag: 'anger'
   }
 ]
@@ -109,7 +125,15 @@ vi.mock('../../src/renderer/src/hooks/useEmotionApi', () => ({
     analyzeEmotion: vi.fn().mockResolvedValue(draftAnalysis),
     listGarden: vi.fn().mockResolvedValue(gardenItems),
     releaseEmotion: vi.fn().mockResolvedValue(gardenItems),
+    waterFlower: vi.fn().mockResolvedValue({ success: true, remaining: 2, garden: gardenItems }),
     getEmotionStats: vi.fn().mockResolvedValue(statsSummary),
+    getAchievements: vi.fn().mockResolvedValue({
+      totalCount: 12,
+      unlockedCount: 3,
+      unlockRatio: 0.25,
+      recentlyUnlocked: [],
+      achievements: []
+    }),
     getGardenGrowth: vi.fn().mockResolvedValue(growthSnapshot),
     listEmotionCalendar: vi.fn().mockResolvedValue(calendarDays),
     listEmotionTimeline: vi.fn().mockResolvedValue(timelineItems)
@@ -132,7 +156,7 @@ describe('App 页面导航', () => {
       expect(screen.getByText('累计释放')).toBeInTheDocument()
       expect(screen.getByText('释放次数')).toBeInTheDocument()
       expect(screen.getByText('最近的情绪节律')).toBeInTheDocument()
-      expect(screen.getByText('开花期')).toBeInTheDocument()
+      expect(screen.getByText('开花')).toBeInTheDocument()
     })
 
     const historyButton = screen.getByRole('button', { name: /历史/i })
@@ -153,7 +177,7 @@ describe('App 页面导航', () => {
       expect(gardenButton).toHaveAttribute('aria-current', 'page')
       expect(screen.getByText('花朵总数')).toBeInTheDocument()
       expect(screen.getByText('最近活跃')).toBeInTheDocument()
-      expect(screen.getByText('当前阶段：开花期')).toBeInTheDocument()
+      expect(screen.getByText('当前阶段：开花')).toBeInTheDocument()
       expect(screen.getByText('保留的是结果，不是原文。')).toBeInTheDocument()
     })
   })

@@ -8,6 +8,7 @@ import type {
   GardenItem
 } from '../preload/api'
 import { emotionTagValues, type EmotionTag } from './emotionMeta'
+import { computeSeasonalTheme } from './seasonalTheme'
 
 const dayMs = 24 * 60 * 60 * 1000
 
@@ -193,51 +194,27 @@ function getLevelByGrowth(currentStreakDays: number, recentReleaseCount: number)
   return 1
 }
 
-function getLevelLabel(level: 1 | 2 | 3): '发芽' | '开花' | '盛放' {
-  if (level === 1) {
-    return '发芽'
-  }
-
-  if (level === 2) {
-    return '开花'
-  }
-
+function getLevelLabel(level: 1 | 2 | 3): '新芽' | '开花' | '盛放' {
+  if (level === 1) return '新芽'
+  if (level === 2) return '开花'
   return '盛放'
 }
 
 function getSeasonKey(level: 1 | 2 | 3): 'seed' | 'bloom' | 'flourish' {
-  if (level === 1) {
-    return 'seed'
-  }
-
-  if (level === 2) {
-    return 'bloom'
-  }
-
+  if (level === 1) return 'seed'
+  if (level === 2) return 'bloom'
   return 'flourish'
 }
 
 function getSeasonLabel(level: 1 | 2 | 3): string {
-  if (level === 1) {
-    return '新芽季'
-  }
-
-  if (level === 2) {
-    return '开花季'
-  }
-
+  if (level === 1) return '新芽季'
+  if (level === 2) return '开花季'
   return '盛放季'
 }
 
 function getNextLevelLabel(level: 1 | 2 | 3): '开花' | '盛放' | null {
-  if (level === 1) {
-    return '开花'
-  }
-
-  if (level === 2) {
-    return '盛放'
-  }
-
+  if (level === 1) return '开花'
+  if (level === 2) return '盛放'
   return null
 }
 
@@ -246,74 +223,83 @@ function getProgressToNextLevel(
   currentStreakDays: number,
   recentReleaseCount: number
 ): number {
-  if (level === 3) {
-    return 1
-  }
-
-  if (level === 1) {
-    return Math.min(1, Math.max(currentStreakDays / 3, recentReleaseCount / 5))
-  }
-
+  if (level === 3) return 1
+  if (level === 1) return Math.min(1, Math.max(currentStreakDays / 3, recentReleaseCount / 5))
   return Math.min(1, Math.max(currentStreakDays / 7, recentReleaseCount / 12))
 }
 
-export function getPeakHourLabel(hour: number | null): string {
-  if (hour === null) {
-    return '暂无释放记录'
-  }
+export function getGrowthStageLabel(stage: number): string {
+  if (stage === 0) return '枯萎'
+  if (stage === 1) return '种子'
+  if (stage === 2) return '发芽'
+  if (stage === 3) return '生长'
+  if (stage === 4) return '开花'
+  return '盛放'
+}
 
+export function getPeakHourLabel(hour: number | null): string {
+  if (hour === null) return '暂无释放记录'
   const period =
     hour < 5 ? '深夜' : hour < 9 ? '清晨' : hour < 12 ? '上午' : hour < 18 ? '下午' : '夜间'
   return `${period} ${pad(hour)}:00 - ${pad(hour)}:59`
 }
 
+function isWithered(lastWateredOn: string, now: Date): boolean {
+  if (!lastWateredOn || lastWateredOn.length === 0) return false
+  const daysSince = getDayDifference(toDateKey(now), lastWateredOn)
+  return daysSince > 5
+}
+
+function deriveGrowthStage(item: GardenItem, now = new Date()): number {
+  if (isWithered(item.lastWateredOn, now)) {
+    return 0
+  }
+
+  const ageDays = Math.max(0, getDayDifference(toDateKey(now), item.releasedOn))
+  const waterings = item.totalWaterings
+
+  let stage = 1
+
+  if (waterings >= 2) stage = 2
+  if (waterings >= 5 && ageDays >= 1) stage = 3
+  if (waterings >= 9 && ageDays >= 3) stage = 4
+  if (waterings >= 14 && ageDays >= 6) stage = 5
+
+  return Math.max(item.growthStage === 0 ? 0 : item.growthStage, stage)
+}
+
 export function buildGardenGrowthSnapshot(
   items: GardenItem[],
+  manualWateringsRemaining = 3,
   now = new Date()
 ): GardenGrowthSnapshot {
   const recentReleaseCount = items.filter((item) => isDateInRange(item.releasedOn, 7, now)).length
   const currentStreakDays = getCurrentStreakDays(items, now)
   const level = getLevelByGrowth(currentStreakDays, recentReleaseCount)
+  const witheredCount = items.filter((item) => item.growthStage === 0).length
 
   return {
     level,
     levelLabel: getLevelLabel(level),
     seasonKey: getSeasonKey(level),
     seasonLabel: getSeasonLabel(level),
+    seasonalTheme: computeSeasonalTheme(level, now),
     currentStreakDays,
     longestStreakDays: getLongestStreakDays(items),
     recentReleaseCount,
     totalBlooms: items.length,
+    witheredCount,
+    manualWateringsRemaining,
     progressToNextLevel: getProgressToNextLevel(level, currentStreakDays, recentReleaseCount),
     nextLevelLabel: getNextLevelLabel(level)
   }
 }
 
-function deriveGrowthStage(
-  item: GardenItem,
-  snapshot: GardenGrowthSnapshot,
-  now = new Date()
-): 1 | 2 | 3 {
-  const ageDays = Math.max(0, getDayDifference(toDateKey(now), item.releasedOn))
-  let stage: 1 | 2 | 3 = 1
-
-  if (ageDays >= 1 || snapshot.currentStreakDays >= 3 || snapshot.recentReleaseCount >= 5) {
-    stage = 2
-  }
-
-  if (ageDays >= 3 || snapshot.currentStreakDays >= 7 || snapshot.recentReleaseCount >= 12) {
-    stage = 3
-  }
-
-  return Math.max(item.growthStage, stage) as 1 | 2 | 3
-}
-
 export function enrichGardenItems(items: GardenItem[], now = new Date()): GardenItem[] {
   const sortedItems = sortByNewest(items)
-  const snapshot = buildGardenGrowthSnapshot(sortedItems, now)
   return sortedItems.map((item) => ({
     ...item,
-    growthStage: deriveGrowthStage(item, snapshot, now)
+    growthStage: deriveGrowthStage(item, now)
   }))
 }
 
@@ -327,7 +313,7 @@ export function buildEmotionStatsSummary(
     isDateInRange(item.releasedOn, rangeDays, now)
   )
   const totalReleases = filteredItems.length
-  const streakSnapshot = buildGardenGrowthSnapshot(normalizedItems, now)
+  const streakSnapshot = buildGardenGrowthSnapshot(normalizedItems, 3, now)
   const breakdown = emotionTagValues.map((tag) => {
     const count = filteredItems.filter((item) => item.emotionTag === tag).length
     return {

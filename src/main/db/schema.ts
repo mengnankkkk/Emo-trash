@@ -18,7 +18,18 @@ export const DIGITAL_GARDEN_SCHEMA = `
     analysis_source TEXT DEFAULT 'rule-fallback',
     source_model TEXT DEFAULT 'built-in-rules',
     released_on TEXT DEFAULT '',
-    released_hour INTEGER DEFAULT 0
+    released_hour INTEGER DEFAULT 0,
+    total_waterings INTEGER DEFAULT 0,
+    last_watered_on TEXT DEFAULT ''
+  );
+`
+
+export const WATERING_LOG_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS watering_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    flower_id INTEGER NOT NULL,
+    watered_on TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'release'
   );
 `
 
@@ -81,8 +92,65 @@ function backfillDerivedFields(database: Database.Database): void {
   updateMany(rows)
 }
 
+function backfillWateringFields(database: Database.Database): void {
+  const rows = database
+    .prepare(
+      `
+        SELECT id, growth_stage, released_on, total_waterings
+        FROM digital_garden
+        WHERE total_waterings = 0
+      `
+    )
+    .all() as Array<{
+    id: number
+    growth_stage: number
+    released_on: string
+    total_waterings: number
+  }>
+
+  if (rows.length === 0) {
+    return
+  }
+
+  const stageToWaterings: Record<number, number> = {
+    1: 1,
+    2: 6,
+    3: 16
+  }
+
+  const updateFlower = database.prepare(
+    `
+      UPDATE digital_garden
+      SET total_waterings = ?, last_watered_on = ?, growth_stage = ?
+      WHERE id = ?
+    `
+  )
+
+  const insertLog = database.prepare(
+    `
+      INSERT INTO watering_log (flower_id, watered_on, source)
+      VALUES (?, ?, 'release')
+    `
+  )
+
+  const commit = database.transaction((entries: typeof rows) => {
+    entries.forEach((row) => {
+      const baseDate = row.released_on && row.released_on.length > 0 ? row.released_on : ''
+      const initialWaterings = stageToWaterings[row.growth_stage] ?? 1
+      const nextStage =
+        row.growth_stage === 1 ? 1 : row.growth_stage === 2 ? 3 : row.growth_stage >= 3 ? 5 : 1
+
+      updateFlower.run(initialWaterings, baseDate, nextStage, row.id)
+      insertLog.run(row.id, baseDate)
+    })
+  })
+
+  commit(rows)
+}
+
 export function initializeSchema(database: Database.Database): void {
   database.exec(DIGITAL_GARDEN_SCHEMA)
+  database.exec(WATERING_LOG_SCHEMA)
   ensureColumn(database, 'emotion_tag', "emotion_tag TEXT DEFAULT 'fatigue'")
   ensureColumn(database, 'emotion_intensity', "emotion_intensity TEXT DEFAULT 'moderate'")
   ensureColumn(database, 'trigger_scene', "trigger_scene TEXT DEFAULT ''")
@@ -93,5 +161,8 @@ export function initializeSchema(database: Database.Database): void {
   ensureColumn(database, 'source_model', "source_model TEXT DEFAULT 'built-in-rules'")
   ensureColumn(database, 'released_on', "released_on TEXT DEFAULT ''")
   ensureColumn(database, 'released_hour', 'released_hour INTEGER DEFAULT 0')
+  ensureColumn(database, 'total_waterings', 'total_waterings INTEGER DEFAULT 0')
+  ensureColumn(database, 'last_watered_on', "last_watered_on TEXT DEFAULT ''")
   backfillDerivedFields(database)
+  backfillWateringFields(database)
 }

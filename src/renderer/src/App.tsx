@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
+  AchievementSummary,
   EmotionCalendarDay,
   EmotionIntensity,
   EmotionStatsRange,
@@ -18,11 +19,12 @@ import GardenView from './features/garden/GardenView'
 import EmotionCalendarHeatmap from './features/history/EmotionCalendarHeatmap'
 import EmotionFilterBar from './features/history/EmotionFilterBar'
 import EmotionTimeline from './features/history/EmotionTimeline'
+import AchievementsPage from './features/achievements/AchievementsPage'
 import HoldToShredButton from './features/ritual/HoldToShredButton'
 import RitualCanvas from './features/ritual/RitualCanvas'
 import { useEmotionApi } from './hooks/useEmotionApi'
 
-type AppPage = 'release' | 'analytics' | 'history' | 'garden'
+type AppPage = 'release' | 'analytics' | 'history' | 'garden' | 'achievements'
 
 const ritualEffectOptions: Array<{
   value: RitualEffect
@@ -95,6 +97,13 @@ const appPages: Array<{
     subtitle: '完整花园视图',
     summary: '保留所有花朵结果',
     indexLabel: '04'
+  },
+  {
+    value: 'achievements',
+    label: '成就',
+    subtitle: '里程碑与解锁',
+    summary: '查看释放节律的里程碑',
+    indexLabel: '05'
   }
 ]
 
@@ -118,6 +127,7 @@ function App(): React.JSX.Element {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [emotionFilter, setEmotionFilter] = useState<EmotionTag[]>([])
   const [isDashboardLoading, setIsDashboardLoading] = useState(true)
+  const [achievementSummary, setAchievementSummary] = useState<AchievementSummary | null>(null)
   const hasLoadedRef = useRef(false)
   const refreshRequestIdRef = useRef(0)
   const analysisRequestIdRef = useRef(0)
@@ -125,8 +135,10 @@ function App(): React.JSX.Element {
     analyzeEmotion,
     listGarden,
     releaseEmotion,
+    waterFlower,
     getEmotionStats,
     getGardenGrowth,
+    getAchievements,
     listEmotionCalendar,
     listEmotionTimeline
   } = useEmotionApi()
@@ -201,11 +213,12 @@ function App(): React.JSX.Element {
       setIsDashboardLoading(true)
 
       try {
-        const [nextGarden, nextStats, nextGrowth, nextCalendar] = await Promise.all([
+        const [nextGarden, nextStats, nextGrowth, nextCalendar, nextAchievements] = await Promise.all([
           options.nextGarden ? Promise.resolve(options.nextGarden) : listGarden(),
           getEmotionStats(statsRange),
           getGardenGrowth(),
-          listEmotionCalendar(30, emotionFilter)
+          listEmotionCalendar(30, emotionFilter),
+          getAchievements()
         ])
 
         if (requestId !== refreshRequestIdRef.current) {
@@ -216,6 +229,7 @@ function App(): React.JSX.Element {
         setStatsSummary(nextStats)
         setGrowthSnapshot(nextGrowth)
         setCalendarDays(nextCalendar)
+        setAchievementSummary(nextAchievements)
 
         const requestedDate = options.preferSelectedDate ? selectedDate : null
         const nextSelectedDate = resolvePreferredDate(nextCalendar, requestedDate)
@@ -244,6 +258,7 @@ function App(): React.JSX.Element {
     },
     [
       emotionFilter,
+      getAchievements,
       getEmotionStats,
       getGardenGrowth,
       listEmotionCalendar,
@@ -372,10 +387,18 @@ function App(): React.JSX.Element {
       }
     }
 
+    if (activePage === 'garden') {
+      return {
+        eyebrow: '像素花园',
+        title: '让花园自己占一整页',
+        description: '完整花园和成长状态单独展示，不再挤在仪式和统计下面。'
+      }
+    }
+
     return {
-      eyebrow: '像素花园',
-      title: '让花园自己占一整页',
-      description: '完整花园和成长状态单独展示，不再挤在仪式和统计下面。'
+      eyebrow: '成就系统',
+      title: '花园里的每一步都值得记录',
+      description: '被动解锁的里程碑，让你看到自己走了多远。'
     }
   }, [activePage, statusText])
 
@@ -424,17 +447,37 @@ function App(): React.JSX.Element {
       ]
     }
 
+    if (activePage === 'garden') {
+      return [
+        { label: '花朵总数', value: `${gardenItems.length} 朵`, detail: '完整保留释放后的花' },
+        {
+          label: '当前阶段',
+          value: growthSnapshot?.levelLabel ?? '生长期',
+          detail: '由连续释放和活跃度推进'
+        },
+        {
+          label: '最近活跃',
+          value: `${growthSnapshot?.recentReleaseCount ?? 0} 次`,
+          detail: '统计最近 7 天释放'
+        }
+      ]
+    }
+
     return [
-      { label: '花朵总数', value: `${gardenItems.length} 朵`, detail: '完整保留释放后的花' },
       {
-        label: '当前阶段',
-        value: growthSnapshot?.levelLabel ?? '生长期',
-        detail: '由连续释放和活跃度推进'
+        label: '已解锁',
+        value: `${achievementSummary?.unlockedCount ?? 0} / ${achievementSummary?.totalCount ?? 0}`,
+        detail: '被动触发的里程碑'
       },
       {
-        label: '最近活跃',
-        value: `${growthSnapshot?.recentReleaseCount ?? 0} 次`,
-        detail: '统计最近 7 天释放'
+        label: '完成度',
+        value: `${Math.round((achievementSummary?.unlockRatio ?? 0) * 100)}%`,
+        detail: '继续释放和浇水来推进'
+      },
+      {
+        label: '最近解锁',
+        value: achievementSummary?.recentlyUnlocked[0]?.title ?? '暂无',
+        detail: '最新达成的成就'
       }
     ]
   }, [
@@ -486,8 +529,19 @@ function App(): React.JSX.Element {
     }
   }
 
+  const handleWaterFlower = async (flowerId: number): Promise<void> => {
+    const result = await waterFlower(flowerId)
+    if (result.success) {
+      setGardenItems(result.garden)
+      await refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true })
+    }
+  }
+
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-5 py-6 md:px-10 md:py-10">
+    <main
+      className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-5 py-6 md:px-10 md:py-10"
+      data-calendar-season={growthSnapshot?.seasonalTheme?.calendarSeason ?? 'spring'}
+    >
       <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20 backdrop-blur">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
@@ -717,7 +771,7 @@ function App(): React.JSX.Element {
               长按达到阈值后，系统只会提取张力特征，并把它映射成一朵花的种子写入本地花园。
             </div>
             <GardenGrowthPanel snapshot={growthSnapshot} loading={isDashboardLoading} />
-            <GardenView items={previewGardenItems} growthSnapshot={growthSnapshot} />
+            <GardenView items={previewGardenItems} growthSnapshot={growthSnapshot} onWaterFlower={handleWaterFlower} wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0} />
           </div>
         </section>
       ) : null}
@@ -772,9 +826,13 @@ function App(): React.JSX.Element {
         <section className="grid gap-6 xl:grid-cols-[0.84fr_1.16fr]">
           <GardenGrowthPanel snapshot={growthSnapshot} loading={isDashboardLoading} />
           <div className="rounded-[2rem] border border-white/10 bg-black/25 p-5 shadow-2xl shadow-black/30">
-            <GardenView items={gardenItems} growthSnapshot={growthSnapshot} />
+            <GardenView items={gardenItems} growthSnapshot={growthSnapshot} onWaterFlower={handleWaterFlower} wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0} />
           </div>
         </section>
+      ) : null}
+
+      {activePage === 'achievements' ? (
+        <AchievementsPage summary={achievementSummary} loading={isDashboardLoading} />
       ) : null}
     </main>
   )

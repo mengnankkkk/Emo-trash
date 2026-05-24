@@ -11,6 +11,8 @@ type GardenRow = {
   flower_type: number
   color_hex: string
   growth_stage: number
+  total_waterings: number
+  last_watered_on: string
   emotion_tag: EmotionTag
   emotion_intensity?: string | null
   trigger_scene?: string | null
@@ -20,6 +22,13 @@ type GardenRow = {
   analysis_source?: string | null
   source_model?: string | null
 }
+
+const GARDEN_SELECT_COLUMNS = `
+  id, timestamp, released_on, released_hour, flower_type, color_hex, growth_stage,
+  total_waterings, last_watered_on, emotion_tag,
+  emotion_intensity, trigger_scene, guidance_question, suggested_labels,
+  analysis_confidence, analysis_source, source_model
+`
 
 export class EmotionRepository {
   constructor(private readonly database: Database.Database) {}
@@ -34,22 +43,12 @@ export class EmotionRepository {
       .prepare(
         `
           INSERT INTO digital_garden (
-            timestamp,
-            flower_type,
-            color_hex,
-            growth_stage,
-            emotion_tag,
-            emotion_intensity,
-            trigger_scene,
-            guidance_question,
-            suggested_labels,
-            analysis_confidence,
-            analysis_source,
-            source_model,
-            released_on,
-            released_hour
+            timestamp, flower_type, color_hex, growth_stage,
+            emotion_tag, emotion_intensity, trigger_scene, guidance_question,
+            suggested_labels, analysis_confidence, analysis_source, source_model,
+            released_on, released_hour, total_waterings, last_watered_on
           )
-          VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
         `
       )
       .run(
@@ -65,23 +64,22 @@ export class EmotionRepository {
         input.analysis.source,
         input.analysis.sourceModel,
         releasedOn,
-        releasedHour
+        releasedHour,
+        releasedOn
       )
 
-    return this.findById(Number(result.lastInsertRowid))
+    const newId = Number(result.lastInsertRowid)
+    this.database
+      .prepare(`INSERT INTO watering_log (flower_id, watered_on, source) VALUES (?, ?, 'release')`)
+      .run(newId, releasedOn)
+
+    return this.findById(newId)
   }
 
   listGarden(limit = 24): GardenItem[] {
     const rows = this.database
       .prepare(
-        `
-          SELECT id, timestamp, released_on, released_hour, flower_type, color_hex, growth_stage, emotion_tag,
-                 emotion_intensity, trigger_scene, guidance_question, suggested_labels,
-                 analysis_confidence, analysis_source, source_model
-          FROM digital_garden
-          ORDER BY timestamp DESC, id DESC
-          LIMIT ?
-        `
+        `SELECT ${GARDEN_SELECT_COLUMNS} FROM digital_garden ORDER BY timestamp DESC, id DESC LIMIT ?`
       )
       .all(limit) as GardenRow[]
 
@@ -91,27 +89,47 @@ export class EmotionRepository {
   listAllGarden(): GardenItem[] {
     const rows = this.database
       .prepare(
-        `
-          SELECT id, timestamp, released_on, released_hour, flower_type, color_hex, growth_stage, emotion_tag,
-                 emotion_intensity, trigger_scene, guidance_question, suggested_labels,
-                 analysis_confidence, analysis_source, source_model
-          FROM digital_garden
-          ORDER BY timestamp DESC, id DESC
-        `
+        `SELECT ${GARDEN_SELECT_COLUMNS} FROM digital_garden ORDER BY timestamp DESC, id DESC`
       )
       .all() as GardenRow[]
 
     return rows.map((row) => this.mapRow(row))
   }
 
+  recordWatering(flowerId: number, source: 'release' | 'manual', dateKey: string): void {
+    this.database
+      .prepare(`INSERT INTO watering_log (flower_id, watered_on, source) VALUES (?, ?, ?)`)
+      .run(flowerId, dateKey, source)
+
+    this.database
+      .prepare(
+        `UPDATE digital_garden SET total_waterings = total_waterings + 1, last_watered_on = ? WHERE id = ?`
+      )
+      .run(dateKey, flowerId)
+  }
+
+  getManualWateringCountToday(dateKey: string): number {
+    const result = this.database
+      .prepare(
+        `SELECT COUNT(*) as count FROM watering_log WHERE source = 'manual' AND watered_on = ?`
+      )
+      .get(dateKey) as { count: number }
+
+    return result.count
+  }
+
+  flowerExists(flowerId: number): boolean {
+    const row = this.database
+      .prepare(`SELECT id FROM digital_garden WHERE id = ?`)
+      .get(flowerId) as { id: number } | undefined
+
+    return row !== undefined
+  }
+
   syncGrowthStages(items: GardenItem[]): void {
     const nextItems = enrichGardenItems(items)
     const update = this.database.prepare(
-      `
-        UPDATE digital_garden
-        SET growth_stage = ?
-        WHERE id = ?
-      `
+      `UPDATE digital_garden SET growth_stage = ? WHERE id = ?`
     )
 
     const commit = this.database.transaction((entries: GardenItem[]) => {
@@ -125,15 +143,7 @@ export class EmotionRepository {
 
   private findById(id: number): GardenItem {
     const row = this.database
-      .prepare(
-        `
-          SELECT id, timestamp, released_on, released_hour, flower_type, color_hex, growth_stage, emotion_tag,
-                 emotion_intensity, trigger_scene, guidance_question, suggested_labels,
-                 analysis_confidence, analysis_source, source_model
-          FROM digital_garden
-          WHERE id = ?
-        `
-      )
+      .prepare(`SELECT ${GARDEN_SELECT_COLUMNS} FROM digital_garden WHERE id = ?`)
       .get(id) as GardenRow | undefined
 
     if (!row) {
@@ -172,6 +182,8 @@ export class EmotionRepository {
       flowerType: row.flower_type,
       colorHex: row.color_hex,
       growthStage: row.growth_stage,
+      totalWaterings: row.total_waterings ?? 0,
+      lastWateredOn: row.last_watered_on ?? '',
       emotionTag: row.emotion_tag,
       analysis: analysis.success ? analysis.data : undefined
     }

@@ -1,25 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GardenGrowthSnapshot, GardenItem } from '../../types/emotion'
 import { getFlowerAssetByType, getFlowerAssets } from '../../lib/flowerAssets'
+import { getGrowthStageLabel } from '../../../../shared/emotionInsights'
 
 interface GardenViewProps {
   items: GardenItem[]
   growthSnapshot: GardenGrowthSnapshot | null
+  onWaterFlower?: (flowerId: number) => void
+  wateringDisabled?: boolean
 }
 
-function getGrowthStageLabel(growthStage: number): string {
-  if (growthStage === 1) {
-    return '发芽'
-  }
-
-  if (growthStage === 2) {
-    return '开花'
-  }
-
-  return '盛放'
-}
-
-function GardenView({ items, growthSnapshot }: GardenViewProps): React.JSX.Element {
+function GardenView({ items, growthSnapshot, onWaterFlower, wateringDisabled }: GardenViewProps): React.JSX.Element {
   const previousIdsRef = useRef<Set<number>>(new Set())
   const hydratedRef = useRef(false)
   const [sproutingIds, setSproutingIds] = useState<Set<number>>(new Set())
@@ -121,6 +112,7 @@ function GardenView({ items, growthSnapshot }: GardenViewProps): React.JSX.Eleme
             const isSwaying = swayingIds.has(item.id)
             const flowerAsset = getFlowerAssetByType(item.flowerType)
             const growthStageLabel = getGrowthStageLabel(item.growthStage)
+            const isWithered = item.growthStage === 0
 
             return (
               <article
@@ -137,8 +129,11 @@ function GardenView({ items, growthSnapshot }: GardenViewProps): React.JSX.Eleme
                   !isSprouting ? 'garden-card--idle' : '',
                   isSprouting ? 'garden-card--sprouting' : '',
                   isSwaying ? 'garden-card--swaying' : '',
+                  isWithered ? 'garden-card--withered opacity-50 grayscale' : '',
                   item.growthStage === 2 ? 'garden-card--growth-2' : '',
-                  item.growthStage === 3 ? 'garden-card--growth-3' : ''
+                  item.growthStage === 3 ? 'garden-card--growth-3' : '',
+                  item.growthStage === 4 ? 'garden-card--growth-4' : '',
+                  item.growthStage === 5 ? 'garden-card--growth-5' : ''
                 ].join(' ')}
               >
                 <div className="garden-flower relative h-10 w-10">
@@ -153,9 +148,23 @@ function GardenView({ items, growthSnapshot }: GardenViewProps): React.JSX.Eleme
                   <span className="emotion-chip rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold tracking-[0.16em] text-white/75">
                     {flowerAsset.displayName}
                   </span>
-                  <span className="text-[11px] text-white/45">{growthStageLabel}</span>
-                  <span className="text-[11px] text-white/35">#{item.id}</span>
+                  <span className={`text-[11px] ${isWithered ? 'text-red-300/70' : 'text-white/45'}`}>
+                    {growthStageLabel}
+                  </span>
+                  <span className="text-[10px] text-white/30">
+                    浇水 {item.totalWaterings} 次
+                  </span>
                 </div>
+                {onWaterFlower && (
+                  <button
+                    type="button"
+                    disabled={wateringDisabled || item.growthStage === 5}
+                    onClick={() => onWaterFlower(item.id)}
+                    className="mt-1 rounded-full border border-sky-300/30 bg-sky-400/10 px-2.5 py-1 text-[10px] font-semibold tracking-[0.14em] text-sky-200/80 transition hover:bg-sky-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    浇水
+                  </button>
+                )}
               </article>
             )
           })

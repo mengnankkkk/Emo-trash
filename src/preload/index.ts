@@ -21,6 +21,12 @@ const api: EmoTrashApi = {
   listGarden() {
     return ipcRenderer.invoke(emoTrashChannels.listGarden)
   },
+  waterFlower(flowerId: number) {
+    return ipcRenderer.invoke(emoTrashChannels.waterFlower, { flowerId })
+  },
+  getAchievements() {
+    return ipcRenderer.invoke(emoTrashChannels.getAchievements)
+  },
   getEmotionStats(rangeDays: EmotionStatsRange) {
     return ipcRenderer.invoke(emoTrashChannels.getEmotionStats, rangeDays)
   },
