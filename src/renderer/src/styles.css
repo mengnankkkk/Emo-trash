@@ -352,6 +352,7 @@ textarea::-webkit-scrollbar {
   box-shadow: 3px 3px 0 var(--pixel-shadow);
   image-rendering: pixelated;
   transition: background-color 0.4s ease, border-color 0.4s ease;
+  position: relative;
 }
 
 .garden-card--idle .garden-bloom {
@@ -472,6 +473,73 @@ textarea::-webkit-scrollbar {
   background: rgba(56, 189, 248, 0.3);
   animation: waterRipple 0.5s ease-out forwards;
   pointer-events: none;
+}
+
+/* ═══ 花园工具栏 ═══ */
+
+.garden-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 3px solid var(--border-primary);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  box-shadow: 3px 3px 0 var(--pixel-shadow);
+}
+
+.garden-tool-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 2px solid var(--border-primary);
+  border-radius: 2px;
+  background: var(--bg-panel);
+  font-family: 'Silkscreen', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  transition: transform 80ms, box-shadow 80ms, border-color 120ms, background 120ms;
+  box-shadow: 2px 2px 0 var(--pixel-shadow);
+}
+
+.garden-tool-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--pixel-shadow);
+}
+
+.garden-tool-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--pixel-shadow);
+}
+
+.garden-tool-btn[data-active="true"] {
+  border-color: var(--tool-color);
+  background: var(--tool-bg);
+  color: var(--tool-color);
+  box-shadow: 2px 2px 0 var(--tool-color), inset 0 0 8px var(--tool-bg);
+}
+
+.garden-card--targetable {
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+}
+
+.garden-card--targetable:hover {
+  border-color: var(--tool-color, var(--border-strong)) !important;
+  box-shadow: 5px 5px 0 var(--pixel-shadow), 0 0 12px var(--tool-bg, transparent) !important;
+  transform: translate(-2px, -2px) scale(1.02);
+}
+
+@keyframes waterSplash {
+  0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.6); }
+  50% { box-shadow: 0 0 0 8px rgba(56, 189, 248, 0.2); }
+  100% { box-shadow: 0 0 0 16px rgba(56, 189, 248, 0); }
+}
+
+.garden-card--water-splash {
+  animation: waterSplash 0.6s ease-out;
 }
 
 /* ═══ 每日快捷入口 ═══ */

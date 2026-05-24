@@ -11,6 +11,7 @@ export const emoTrashChannels = {
   releaseEmotion: 'emotion:release',
   listGarden: 'garden:list',
   waterFlower: 'garden:water',
+  pickFlower: 'garden:pick',
   triggerShake: 'window:shake',
   getEmotionStats: 'emotion:stats',
   getGardenGrowth: 'garden:growth',
@@ -84,7 +85,7 @@ export const gardenGrowthSnapshotSchema = z.object({
   recentReleaseCount: z.number().int().nonnegative(),
   totalBlooms: z.number().int().nonnegative(),
   witheredCount: z.number().int().nonnegative(),
-  manualWateringsRemaining: z.number().int().min(0).max(3),
+  manualWateringsRemaining: z.number().int().min(0).max(1),
   progressToNextLevel: z.number().min(0).max(1),
   nextLevelLabel: z.enum(['开花', '盛放']).nullable()
 })
@@ -93,9 +94,18 @@ export const waterFlowerInputSchema = z.object({
   flowerId: z.number().int().positive()
 })
 
+export const pickFlowerInputSchema = z.object({
+  flowerId: z.number().int().positive()
+})
+
 export const waterFlowerResultSchema = z.object({
   success: z.boolean(),
-  remaining: z.number().int().min(0).max(3),
+  remaining: z.number().int().min(0).max(1),
+  garden: z.array(gardenItemSchema)
+})
+
+export const pickFlowerResultSchema = z.object({
+  success: z.boolean(),
   garden: z.array(gardenItemSchema)
 })
 
@@ -153,6 +163,7 @@ export type EmotionTrendItem = z.infer<typeof emotionTrendItemSchema>
 export type EmotionStatsSummary = z.infer<typeof emotionStatsSummarySchema>
 export type GardenGrowthSnapshot = z.infer<typeof gardenGrowthSnapshotSchema>
 export type WaterFlowerResult = z.infer<typeof waterFlowerResultSchema>
+export type PickFlowerResult = z.infer<typeof pickFlowerResultSchema>
 export type EmotionCalendarDay = z.infer<typeof emotionCalendarDaySchema>
 export type EmotionTimelineQuery = z.infer<typeof emotionTimelineQuerySchema>
 export type EmotionTimelineEntry = GardenItem
@@ -166,6 +177,7 @@ export interface EmoTrashApi {
   releaseEmotion(input: ReleaseEmotionInput): Promise<GardenItem[]>
   listGarden(): Promise<GardenItem[]>
   waterFlower(flowerId: number): Promise<WaterFlowerResult>
+  pickFlower(flowerId: number): Promise<PickFlowerResult>
   getEmotionStats(rangeDays: EmotionStatsRange): Promise<EmotionStatsSummary>
   getGardenGrowth(): Promise<GardenGrowthSnapshot>
   getAchievements(): Promise<AchievementSummary>

@@ -163,6 +163,7 @@ export function initializeSchema(database: Database.Database): void {
   ensureColumn(database, 'released_hour', 'released_hour INTEGER DEFAULT 0')
   ensureColumn(database, 'total_waterings', 'total_waterings INTEGER DEFAULT 0')
   ensureColumn(database, 'last_watered_on', "last_watered_on TEXT DEFAULT ''")
+  ensureColumn(database, 'picked_on', 'picked_on TEXT')
   backfillDerivedFields(database)
   backfillWateringFields(database)
 }

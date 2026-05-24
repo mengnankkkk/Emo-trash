@@ -5,6 +5,7 @@ import type {
   EmotionTimelineQuery,
   EmoTrashApi,
   GardenItem,
+  PickFlowerResult,
   ReleaseEmotionInput,
   ShakeWindowInput,
   WaterFlowerResult
@@ -83,7 +84,7 @@ const browserPreviewApi: EmoTrashApi = {
   },
   async waterFlower(flowerId: number): Promise<WaterFlowerResult> {
     const used = getManualWateringsToday()
-    const remaining = Math.max(0, 3 - used)
+    const remaining = Math.max(0, 1 - used)
 
     if (remaining <= 0) {
       return { success: false, remaining: 0, garden: readGarden().slice(0, 24) }
@@ -103,11 +104,22 @@ const browserPreviewApi: EmoTrashApi = {
     saveGarden(enriched)
     return { success: true, remaining: remaining - 1, garden: enriched.slice(0, 24) }
   },
+  async pickFlower(flowerId: number): Promise<PickFlowerResult> {
+    const garden = readGarden()
+    const idx = garden.findIndex((item) => item.id === flowerId)
+    if (idx === -1) {
+      return { success: false, garden: garden.slice(0, 24) }
+    }
+
+    garden.splice(idx, 1)
+    saveGarden(garden)
+    return { success: true, garden: garden.slice(0, 24) }
+  },
   async getEmotionStats(rangeDays: EmotionStatsRange) {
     return buildEmotionStatsSummary(readGarden(), rangeDays)
   },
   async getGardenGrowth() {
-    const remaining = Math.max(0, 3 - getManualWateringsToday())
+    const remaining = Math.max(0, 1 - getManualWateringsToday())
     return buildGardenGrowthSnapshot(readGarden(), remaining)
   },
   async getAchievements() {

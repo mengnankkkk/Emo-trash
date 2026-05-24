@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GardenGrowthSnapshot, GardenItem } from '../../types/emotion'
 import { getFlowerAssetByType, getFlowerAssets } from '../../lib/flowerAssets'
 import { getGrowthStageLabel } from '../../../../shared/emotionInsights'
@@ -85,15 +85,32 @@ interface GardenViewProps {
   items: GardenItem[]
   growthSnapshot: GardenGrowthSnapshot | null
   onWaterFlower?: (flowerId: number) => void
+  onPickFlower?: (flowerId: number) => void
   wateringDisabled?: boolean
 }
 
-function GardenView({ items, growthSnapshot, onWaterFlower, wateringDisabled }: GardenViewProps): React.JSX.Element {
+function GardenView({ items, growthSnapshot, onWaterFlower, onPickFlower, wateringDisabled }: GardenViewProps): React.JSX.Element {
   const previousIdsRef = useRef<Set<number>>(new Set())
   const hydratedRef = useRef(false)
   const [sproutingIds, setSproutingIds] = useState<Set<number>>(new Set())
   const [swayingIds, setSwayingIds] = useState<Set<number>>(new Set())
+  const [splashId, setSplashId] = useState<number | null>(null)
+  const [activeTool, setActiveTool] = useState<'none' | 'water' | 'pick'>('none')
   const flowerAssets = useMemo(() => getFlowerAssets(), [])
+
+  const handleToolClick = useCallback((tool: 'water' | 'pick') => {
+    setActiveTool((prev) => (prev === tool ? 'none' : tool))
+  }, [])
+
+  const handleFlowerClick = useCallback((flowerId: number) => {
+    if (activeTool === 'water' && onWaterFlower) {
+      setSplashId(flowerId)
+      window.setTimeout(() => setSplashId(null), 600)
+      onWaterFlower(flowerId)
+    } else if (activeTool === 'pick' && onPickFlower) {
+      onPickFlower(flowerId)
+    }
+  }, [activeTool, onWaterFlower, onPickFlower])
 
   useEffect(() => {
     const nextIds = new Set(items.map((item) => item.id))
@@ -188,8 +205,41 @@ function GardenView({ items, growthSnapshot, onWaterFlower, wateringDisabled }: 
         const glowOpacity = gardenGlowOpacity[gardenSeason]
 
         return (
-          <div
-            className="garden-atmosphere grid min-h-36 grid-cols-2 gap-3 border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] p-4 md:grid-cols-4 xl:grid-cols-6"
+          <>
+            <div className="garden-toolbar">
+              <button
+                type="button"
+                className="garden-tool-btn"
+                data-active={activeTool === 'water' ? 'true' : 'false'}
+                style={{ '--tool-color': '#0277bd', '--tool-bg': '#e1f5fe' } as React.CSSProperties}
+                onClick={() => handleToolClick('water')}
+              >
+                <span style={{ width: 16, height: 16, display: 'inline-block', position: 'relative' }}>
+                  <span style={{
+                    position: 'absolute', width: 2, height: 2,
+                    boxShadow: '4px 0 0 #0277bd, 6px 0 0 #0277bd, 2px 2px 0 #0277bd, 4px 2px 0 #0277bd, 6px 2px 0 #0277bd, 8px 2px 0 #0277bd, 0 4px 0 #0288d1, 2px 4px 0 #0288d1, 4px 4px 0 #0288d1, 6px 4px 0 #0288d1, 8px 4px 0 #0288d1, 10px 4px 0 #0288d1, 0 6px 0 #0288d1, 2px 6px 0 #0288d1, 8px 6px 0 #0288d1, 10px 6px 0 #0288d1, 0 8px 0 #01579b, 2px 8px 0 #01579b, 4px 8px 0 #01579b, 6px 8px 0 #01579b, 8px 8px 0 #01579b, 10px 8px 0 #01579b, 2px 10px 0 #01579b, 4px 10px 0 #01579b, 6px 10px 0 #01579b, 8px 10px 0 #01579b'
+                  }} />
+                </span>
+                浇水{wateringDisabled ? '（已用完）' : ''}
+              </button>
+              <button
+                type="button"
+                className="garden-tool-btn"
+                data-active={activeTool === 'pick' ? 'true' : 'false'}
+                style={{ '--tool-color': '#2e7d32', '--tool-bg': '#e8f5e9' } as React.CSSProperties}
+                onClick={() => handleToolClick('pick')}
+              >
+                <span style={{ width: 16, height: 16, display: 'inline-block', position: 'relative' }}>
+                  <span style={{
+                    position: 'absolute', width: 2, height: 2,
+                    boxShadow: '4px 0 0 #2e7d32, 8px 0 0 #2e7d32, 4px 2px 0 #388e3c, 6px 2px 0 #388e3c, 8px 2px 0 #388e3c, 4px 4px 0 #388e3c, 6px 4px 0 #388e3c, 8px 4px 0 #388e3c, 2px 6px 0 #1b5e20, 4px 6px 0 #1b5e20, 6px 6px 0 #1b5e20, 8px 6px 0 #1b5e20, 10px 6px 0 #1b5e20, 2px 8px 0 #1b5e20, 4px 8px 0 #1b5e20, 6px 8px 0 #1b5e20, 8px 8px 0 #1b5e20, 10px 8px 0 #1b5e20, 4px 10px 0 #2e7d32, 6px 10px 0 #2e7d32, 8px 10px 0 #2e7d32, 4px 12px 0 #2e7d32, 6px 12px 0 #2e7d32, 8px 12px 0 #2e7d32'
+                  }} />
+                </span>
+                采摘
+              </button>
+            </div>
+            <div
+              className="garden-atmosphere grid min-h-36 grid-cols-2 gap-3 border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] p-4 md:grid-cols-4 xl:grid-cols-6"
             data-calendar-season={calendarSeason}
             data-garden-season={gardenSeason}
             style={{
@@ -230,9 +280,23 @@ function GardenView({ items, growthSnapshot, onWaterFlower, wateringDisabled }: 
                       item.growthStage === 2 ? 'garden-card--growth-2' : '',
                       item.growthStage === 3 ? 'garden-card--growth-3' : '',
                       item.growthStage === 4 ? 'garden-card--growth-4' : '',
-                      item.growthStage === 5 ? 'garden-card--growth-5' : ''
+                      item.growthStage === 5 ? 'garden-card--growth-5' : '',
+                      activeTool !== 'none' ? 'garden-card--targetable' : '',
+                      splashId === item.id ? 'garden-card--water-splash' : ''
                     ].join(' ')}
+                    style={activeTool !== 'none' ? {
+                      '--tool-color': activeTool === 'water' ? '#0277bd' : '#2e7d32',
+                      '--tool-bg': activeTool === 'water' ? 'rgba(2,119,189,0.1)' : 'rgba(46,125,50,0.1)'
+                    } as React.CSSProperties : undefined}
                   >
+                    {activeTool !== 'none' && (
+                      <button
+                        type="button"
+                        onClick={() => handleFlowerClick(item.id)}
+                        className="absolute inset-0 z-10 cursor-pointer rounded-[4px] border-0 bg-transparent"
+                        aria-label={activeTool === 'water' ? '浇水' : '采摘'}
+                      />
+                    )}
                     <div className="garden-flower relative h-10 w-10">
                       <span className="garden-glow absolute inset-x-1 bottom-0 h-3 rounded-full bg-emerald-400/30 blur-sm" />
                       <img
@@ -252,21 +316,12 @@ function GardenView({ items, growthSnapshot, onWaterFlower, wateringDisabled }: 
                         浇水 {item.totalWaterings} 次
                       </span>
                     </div>
-                    {onWaterFlower && (
-                      <button
-                        type="button"
-                        disabled={wateringDisabled || item.growthStage === 5}
-                        onClick={() => onWaterFlower(item.id)}
-                        className="water-btn mt-1 rounded-[2px] border-2 border-sky-400 bg-sky-100 px-2.5 py-1 text-[10px] font-semibold tracking-[0.14em] text-sky-700 transition hover:border-sky-500 hover:bg-sky-200 hover:shadow-[0_0_12px_rgba(56,189,248,0.2)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none"
-                      >
-                        浇水
-                      </button>
-                    )}
                   </article>
                 )
               })
             )}
           </div>
+          </>
         )
       })()}
     </section>

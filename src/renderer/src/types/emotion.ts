@@ -12,6 +12,7 @@ import type {
   EmotionTimelineQuery,
   GardenGrowthSnapshot,
   GardenItem,
+  PickFlowerResult,
   ReleaseEmotionInput,
   SeasonalTheme,
   WaterFlowerResult
@@ -34,6 +35,7 @@ export type {
   EmotionTimelineQuery,
   GardenGrowthSnapshot,
   GardenItem,
+  PickFlowerResult,
   ReleaseEmotionInput,
   RitualEffect,
   SeasonalTheme,

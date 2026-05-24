@@ -79,7 +79,7 @@ export class EmotionRepository {
   listGarden(limit = 24): GardenItem[] {
     const rows = this.database
       .prepare(
-        `SELECT ${GARDEN_SELECT_COLUMNS} FROM digital_garden ORDER BY timestamp DESC, id DESC LIMIT ?`
+        `SELECT ${GARDEN_SELECT_COLUMNS} FROM digital_garden WHERE picked_on IS NULL ORDER BY timestamp DESC, id DESC LIMIT ?`
       )
       .all(limit) as GardenRow[]
 
@@ -89,11 +89,27 @@ export class EmotionRepository {
   listAllGarden(): GardenItem[] {
     const rows = this.database
       .prepare(
+        `SELECT ${GARDEN_SELECT_COLUMNS} FROM digital_garden WHERE picked_on IS NULL ORDER BY timestamp DESC, id DESC`
+      )
+      .all() as GardenRow[]
+
+    return rows.map((row) => this.mapRow(row))
+  }
+
+  listAllGardenIncludingPicked(): GardenItem[] {
+    const rows = this.database
+      .prepare(
         `SELECT ${GARDEN_SELECT_COLUMNS} FROM digital_garden ORDER BY timestamp DESC, id DESC`
       )
       .all() as GardenRow[]
 
     return rows.map((row) => this.mapRow(row))
+  }
+
+  pickFlower(flowerId: number, dateKey: string): void {
+    this.database
+      .prepare(`UPDATE digital_garden SET picked_on = ? WHERE id = ?`)
+      .run(dateKey, flowerId)
   }
 
   recordWatering(flowerId: number, source: 'release' | 'manual', dateKey: string): void {

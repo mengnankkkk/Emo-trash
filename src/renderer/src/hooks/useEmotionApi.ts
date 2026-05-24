@@ -10,6 +10,7 @@ import type {
   EmotionStatsSummary,
   EmotionTimelineEntry,
   WaterFlowerResult,
+  PickFlowerResult,
   AchievementSummary
 } from '../types/emotion'
 import type { ReleaseEmotionInput } from '../../../preload/api'
@@ -20,6 +21,7 @@ export function useEmotionApi(): {
   releaseEmotion: (input: ReleaseEmotionInput) => Promise<GardenItem[]>
   listGarden: () => Promise<GardenItem[]>
   waterFlower: (flowerId: number) => Promise<WaterFlowerResult>
+  pickFlower: (flowerId: number) => Promise<PickFlowerResult>
   getEmotionStats: (rangeDays: EmotionStatsRange) => Promise<EmotionStatsSummary>
   getGardenGrowth: () => Promise<GardenGrowthSnapshot>
   getAchievements: () => Promise<AchievementSummary>
@@ -52,6 +54,10 @@ export function useEmotionApi(): {
     return getRuntimeApi().waterFlower(flowerId)
   }, [])
 
+  const pickFlower = useCallback((flowerId: number) => {
+    return getRuntimeApi().pickFlower(flowerId)
+  }, [])
+
   const getEmotionStats = useCallback((rangeDays: EmotionStatsRange) => {
     return getRuntimeApi().getEmotionStats(rangeDays)
   }, [])
@@ -77,6 +83,7 @@ export function useEmotionApi(): {
     releaseEmotion,
     listGarden,
     waterFlower,
+    pickFlower,
     getEmotionStats,
     getGardenGrowth,
     getAchievements,

@@ -10,6 +10,7 @@ import {
   emotionStatsRangeSchema,
   emotionTagSchema,
   emotionTimelineQuerySchema,
+  pickFlowerInputSchema,
   releaseEmotionInputSchema,
   shakeWindowInputSchema,
   waterFlowerInputSchema
@@ -42,6 +43,11 @@ export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): vo
   ipcMain.handle(emoTrashChannels.waterFlower, (_event, payload) => {
     const input = waterFlowerInputSchema.parse(payload)
     return releaseService.waterFlower(input.flowerId)
+  })
+
+  ipcMain.handle(emoTrashChannels.pickFlower, (_event, payload) => {
+    const input = pickFlowerInputSchema.parse(payload)
+    return releaseService.pickFlower(input.flowerId)
   })
 
   ipcMain.handle(emoTrashChannels.getEmotionStats, (_event, payload) => {

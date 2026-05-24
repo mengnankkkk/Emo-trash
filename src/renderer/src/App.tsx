@@ -143,6 +143,7 @@ function App(): React.JSX.Element {
     listGarden,
     releaseEmotion,
     waterFlower,
+    pickFlower,
     getEmotionStats,
     getGardenGrowth,
     getAchievements,
@@ -473,6 +474,14 @@ function App(): React.JSX.Element {
     }
   }
 
+  const handlePickFlower = async (flowerId: number): Promise<void> => {
+    const result = await pickFlower(flowerId)
+    if (result.success) {
+      setGardenItems(result.garden)
+      await refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true })
+    }
+  }
+
   return (
     <main
       className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-4"
@@ -483,7 +492,7 @@ function App(): React.JSX.Element {
           <span className="text-[11px] font-bold" style={{ background: 'linear-gradient(90deg, #e91e63, #7b1fa2, #0277bd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>EMO-TRASH</span>
           <span className="game-hud-stat">花朵 <span className="game-hud-stat-value">{gardenItems.length}</span></span>
           <span className="game-hud-stat">连续 <span className="game-hud-stat-value">{growthSnapshot?.currentStreakDays ?? 0}天</span></span>
-          <span className="game-hud-stat">浇水 <span className="game-hud-stat-value">{growthSnapshot?.manualWateringsRemaining ?? 3}/3</span></span>
+          <span className="game-hud-stat">浇水 <span className="game-hud-stat-value">{growthSnapshot?.manualWateringsRemaining ?? 1}/1</span></span>
         </div>
         <span className="text-[10px] text-[var(--text-muted)]">{growthSnapshot?.seasonalTheme?.combinedLabel ?? '新芽季'}</span>
       </header>
@@ -632,7 +641,7 @@ function App(): React.JSX.Element {
             <p className="text-center text-[10px] leading-5 text-[var(--text-muted)]">
               ※ 仅提取张力特征，不存原文
             </p>
-            <GardenView items={previewGardenItems} growthSnapshot={growthSnapshot} onWaterFlower={handleWaterFlower} wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0} />
+            <GardenView items={previewGardenItems} growthSnapshot={growthSnapshot} onWaterFlower={handleWaterFlower} onPickFlower={handlePickFlower} wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0} />
           </div>
 
           {!ritualActive && recapData && (
@@ -697,7 +706,7 @@ function App(): React.JSX.Element {
           </div>
           <div className="pixel-panel pixel-panel--cyan p-5">
             <h2 className="mb-3 border-b-3 border-dashed border-[#00838f]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-cyan)]">▼ 像素花园</h2>
-            <GardenView items={gardenItems} growthSnapshot={growthSnapshot} onWaterFlower={handleWaterFlower} wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0} />
+            <GardenView items={gardenItems} growthSnapshot={growthSnapshot} onWaterFlower={handleWaterFlower} onPickFlower={handlePickFlower} wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0} />
           </div>
         </section>
       ) : null}

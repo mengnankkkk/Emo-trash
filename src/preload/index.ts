@@ -24,6 +24,9 @@ const api: EmoTrashApi = {
   waterFlower(flowerId: number) {
     return ipcRenderer.invoke(emoTrashChannels.waterFlower, { flowerId })
   },
+  pickFlower(flowerId: number) {
+    return ipcRenderer.invoke(emoTrashChannels.pickFlower, { flowerId })
+  },
   getAchievements() {
     return ipcRenderer.invoke(emoTrashChannels.getAchievements)
   },

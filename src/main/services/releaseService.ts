@@ -26,7 +26,7 @@ import { buildAchievementSummary } from '../../shared/achievements'
 import { EmotionAnalysisService } from './emotionAnalysisService'
 import { EmotionRepository } from '../db/repositories/emotionRepository'
 
-const DAILY_MANUAL_WATERING_LIMIT = 3
+const DAILY_MANUAL_WATERING_LIMIT = 1
 
 export class ReleaseService {
   constructor(
@@ -65,6 +65,16 @@ export class ReleaseService {
     const nextRemaining = remaining - 1
 
     return { success: true, remaining: nextRemaining, garden: this.listGarden() }
+  }
+
+  pickFlower(flowerId: number): { success: boolean; garden: GardenItem[] } {
+    if (!this.emotionRepository.flowerExists(flowerId)) {
+      return { success: false, garden: this.listGarden() }
+    }
+
+    const dateKey = toDateKey(new Date())
+    this.emotionRepository.pickFlower(flowerId, dateKey)
+    return { success: true, garden: this.listGarden() }
   }
 
   listGarden(): GardenItem[] {
@@ -107,7 +117,7 @@ export class ReleaseService {
   }
 
   private getEnrichedItems(): GardenItem[] {
-    const items = this.emotionRepository.listAllGarden()
+    const items = this.emotionRepository.listAllGardenIncludingPicked()
     const enrichedItems = enrichGardenItems(items)
     const sourceById = new Map(items.map((item) => [item.id, item]))
     const needsSync = enrichedItems.some(
