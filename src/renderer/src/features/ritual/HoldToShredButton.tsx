@@ -22,10 +22,11 @@ function HoldToShredButton({
       onPointerUp={stopHolding}
       onPointerLeave={stopHolding}
       onPointerCancel={stopHolding}
-      className="group relative flex h-16 w-full items-center justify-center overflow-hidden rounded-full border border-rose-500/40 bg-rose-500/15 text-sm font-semibold uppercase tracking-[0.3em] text-rose-100 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-white/30"
+      className="group relative flex h-16 w-full items-center justify-center overflow-hidden rounded-[4px] border-3 border-[var(--accent-rose)] bg-[var(--accent-rose-soft)] text-sm font-semibold uppercase tracking-[0.3em] text-[var(--accent-rose)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:border-[var(--border-primary)] disabled:bg-[var(--bg-surface)] disabled:text-[var(--text-muted)]"
+      style={{ boxShadow: '3px 3px 0 var(--pixel-shadow)' }}
     >
       <span
-        className="absolute inset-y-0 left-0 bg-gradient-to-r from-rose-600/70 to-orange-400/70 transition-[width] duration-75"
+        className="absolute inset-y-0 left-0 bg-gradient-to-r from-[var(--accent-rose)] to-[var(--accent-amber)] opacity-70 transition-[width] duration-75"
         style={{ width: `${progress}%` }}
       />
       <span className="relative z-10">

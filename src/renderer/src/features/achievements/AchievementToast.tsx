@@ -36,14 +36,14 @@ function ToastEntry({ item, onDismiss }: { item: ToastItem; onDismiss: (id: stri
   return (
     <div
       className={[
-        'achievement-toast flex items-center gap-3 rounded-2xl border border-emerald-300/30 bg-black/85 px-4 py-3 shadow-lg shadow-black/40 backdrop-blur-md',
+        'achievement-toast flex items-center gap-3 rounded-[4px] border-3 border-[var(--accent-yellow)] bg-[var(--bg-panel)] px-4 py-3 shadow-[4px_4px_0_var(--pixel-shadow)]',
         visible ? 'achievement-toast--enter' : 'achievement-toast--exit'
       ].join(' ')}
     >
       <span className="text-lg">✦</span>
       <div className="flex flex-col">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-emerald-300/70">成就解锁</span>
-        <span className="text-sm font-semibold text-emerald-100">{item.title}</span>
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-yellow)]">成就解锁</span>
+        <span className="text-sm font-semibold text-[var(--text-primary)]">{item.title}</span>
       </div>
     </div>
   )

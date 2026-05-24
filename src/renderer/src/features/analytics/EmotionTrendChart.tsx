@@ -21,18 +21,18 @@ function EmotionTrendChart({ trend }: EmotionTrendChartProps): React.JSX.Element
 
         return (
           <div key={item.date} className="flex flex-col items-center gap-2">
-            <div className="flex h-20 w-full items-end justify-center rounded-2xl border border-white/10 bg-black/20 px-2 py-2">
+            <div className="flex h-20 w-full items-end justify-center rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] px-2 py-2">
               <div
-                className="w-full rounded-full transition-[height]"
+                className="w-full rounded-[2px] transition-[height]"
                 style={{
                   height,
-                  background: asset ? asset.colorHex : 'rgba(255,255,255,0.14)'
+                  background: asset ? asset.colorHex : 'var(--border-primary)'
                 }}
               />
             </div>
-            <div className="text-center text-[10px] text-white/35">
+            <div className="text-center text-[10px] text-[var(--text-muted)]">
               <div>{item.date.slice(5).replace('-', '/')}</div>
-              <div className="mt-1 text-white/60">{item.count}</div>
+              <div className="mt-1 text-[var(--text-secondary)]">{item.count}</div>
             </div>
           </div>
         )

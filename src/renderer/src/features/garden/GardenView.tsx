@@ -5,22 +5,22 @@ import { getGrowthStageLabel } from '../../../../shared/emotionInsights'
 import type { CalendarSeason, GardenSeason } from '../../../../shared/seasonalTheme'
 
 const seasonColors: Record<CalendarSeason, { particle: string; tintBase: string }> = {
-  spring: { particle: 'rgba(110, 231, 183, 0.8)', tintBase: '52, 211, 153' },
-  summer: { particle: 'rgba(253, 224, 71, 0.8)', tintBase: '251, 191, 36' },
-  autumn: { particle: 'rgba(251, 146, 60, 0.8)', tintBase: '251, 146, 60' },
-  winter: { particle: 'rgba(186, 220, 255, 0.8)', tintBase: '147, 197, 253' }
+  spring: { particle: 'rgba(76, 175, 80, 0.9)', tintBase: '76, 175, 80' },
+  summer: { particle: 'rgba(255, 152, 0, 0.9)', tintBase: '255, 152, 0' },
+  autumn: { particle: 'rgba(183, 28, 28, 0.8)', tintBase: '183, 28, 28' },
+  winter: { particle: 'rgba(25, 118, 210, 0.85)', tintBase: '25, 118, 210' }
 }
 
 const gardenTintOpacity: Record<GardenSeason, number> = {
-  seed: 0.03,
-  bloom: 0.06,
-  flourish: 0.10
+  seed: 0.10,
+  bloom: 0.18,
+  flourish: 0.28
 }
 
 const gardenGlowOpacity: Record<GardenSeason, number> = {
   seed: 0,
-  bloom: 0.08,
-  flourish: 0.14
+  bloom: 0.18,
+  flourish: 0.28
 }
 
 const particleCounts: Record<GardenSeason, number> = {
@@ -155,26 +155,26 @@ function GardenView({ items, growthSnapshot, onWaterFlower, wateringDisabled }: 
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <span className="text-xs uppercase tracking-[0.28em] text-white/35">像素花园</span>
-          <p className="mt-2 text-sm text-white/45">保留的是结果，不是原文。</p>
+          <span className="text-xs uppercase tracking-[0.28em] text-[var(--text-muted)]">像素花园</span>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">保留的是结果，不是原文。</p>
         </div>
         {growthSnapshot ? (
-          <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs tracking-[0.18em] text-emerald-100/80">
+          <div className="rounded-[2px] border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] px-4 py-2 text-xs tracking-[0.18em] text-[var(--accent-emerald)]">
             当前阶段：{growthSnapshot.levelLabel}
           </div>
         ) : (
-          <span className="text-xs text-white/35">等待新的花朵生长</span>
+          <span className="text-xs text-[var(--text-muted)]">等待新的花朵生长</span>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-black/15 p-3">
+      <div className="flex flex-wrap gap-2 rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] p-3">
         {flowerAssets.map((asset) => (
           <div
             key={asset.emotionTag}
-            className="emotion-chip flex items-center gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2"
+            className="emotion-chip flex items-center gap-2 rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] px-3 py-2"
           >
             <img alt={asset.displayName} className="garden-sprite h-5 w-5" src={asset.textureUrl} />
-            <span className="text-xs font-medium text-white/75">{asset.displayName}</span>
+            <span className="text-xs font-medium text-[var(--text-secondary)]">{asset.displayName}</span>
           </div>
         ))}
       </div>
@@ -189,7 +189,7 @@ function GardenView({ items, growthSnapshot, onWaterFlower, wateringDisabled }: 
 
         return (
           <div
-            className="garden-atmosphere grid min-h-36 grid-cols-2 gap-3 border border-white/10 bg-white/[0.03] p-4 md:grid-cols-4 xl:grid-cols-6"
+            className="garden-atmosphere grid min-h-36 grid-cols-2 gap-3 border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] p-4 md:grid-cols-4 xl:grid-cols-6"
             data-calendar-season={calendarSeason}
             data-garden-season={gardenSeason}
             style={{
@@ -200,7 +200,7 @@ function GardenView({ items, growthSnapshot, onWaterFlower, wateringDisabled }: 
           >
             <SeasonalParticles calendarSeason={calendarSeason} gardenSeason={gardenSeason} />
             {items.length === 0 ? (
-              <div className="col-span-full flex items-center justify-center rounded-2xl border border-dashed border-white/10 bg-black/10 px-4 py-8 text-center text-sm text-white/30">
+              <div className="col-span-full flex items-center justify-center rounded-[4px] border-2 border-dashed border-[var(--border-primary)] bg-[var(--bg-panel)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
                 这里还没有长出任何花。
               </div>
             ) : (
@@ -222,7 +222,7 @@ function GardenView({ items, growthSnapshot, onWaterFlower, wateringDisabled }: 
                     data-idle-sway={isSprouting ? 'false' : 'true'}
                     data-flower-skin={flowerAsset.label}
                     className={[
-                      'garden-card garden-card--interactive flex min-h-32 flex-col items-center justify-between gap-2 rounded-2xl border border-white/10 bg-black/25 px-3 py-3',
+                      'garden-card garden-card--interactive flex min-h-32 flex-col items-center justify-between gap-2 rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] px-3 py-3',
                       !isSprouting ? 'garden-card--idle' : '',
                       isSprouting ? 'garden-card--sprouting' : '',
                       isSwaying ? 'garden-card--swaying' : '',
@@ -242,13 +242,13 @@ function GardenView({ items, growthSnapshot, onWaterFlower, wateringDisabled }: 
                       />
                     </div>
                     <div className="flex flex-col items-center gap-1">
-                      <span className="emotion-chip rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold tracking-[0.16em] text-white/75">
+                      <span className="emotion-chip rounded-[2px] border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] px-2 py-0.5 text-[10px] font-semibold tracking-[0.16em] text-[var(--text-secondary)]">
                         {flowerAsset.displayName}
                       </span>
-                      <span className={`text-[11px] ${isWithered ? 'text-red-300/70' : 'text-white/45'}`}>
+                      <span className={`text-[11px] ${isWithered ? 'text-red-500' : 'text-[var(--text-secondary)]'}`}>
                         {growthStageLabel}
                       </span>
-                      <span className="text-[10px] text-white/30">
+                      <span className="text-[10px] text-[var(--text-muted)]">
                         浇水 {item.totalWaterings} 次
                       </span>
                     </div>
@@ -257,7 +257,7 @@ function GardenView({ items, growthSnapshot, onWaterFlower, wateringDisabled }: 
                         type="button"
                         disabled={wateringDisabled || item.growthStage === 5}
                         onClick={() => onWaterFlower(item.id)}
-                        className="water-btn mt-1 rounded-full border border-sky-300/30 bg-sky-400/10 px-2.5 py-1 text-[10px] font-semibold tracking-[0.14em] text-sky-200/80 transition hover:border-sky-300/50 hover:bg-sky-400/20 hover:shadow-[0_0_12px_rgba(56,189,248,0.15)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none"
+                        className="water-btn mt-1 rounded-[2px] border-2 border-sky-400 bg-sky-100 px-2.5 py-1 text-[10px] font-semibold tracking-[0.14em] text-sky-700 transition hover:border-sky-500 hover:bg-sky-200 hover:shadow-[0_0_12px_rgba(56,189,248,0.2)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none"
                       >
                         浇水
                       </button>

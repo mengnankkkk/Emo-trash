@@ -37,7 +37,7 @@ function getIntensityLabel(value?: string): string | null {
 function EmotionTimeline({ items, selectedDate }: EmotionTimelineProps): React.JSX.Element {
   if (items.length === 0) {
     return (
-      <div className="flex min-h-36 items-center justify-center rounded-3xl border border-dashed border-white/10 bg-black/15 px-4 py-8 text-center text-sm text-white/35">
+      <div className="flex min-h-36 items-center justify-center rounded-[4px] border-2 border-dashed border-[var(--border-primary)] bg-[var(--bg-panel)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
         {selectedDate ? '这一天没有符合筛选条件的情绪释放记录。' : '还没有可展示的时间轴记录。'}
       </div>
     )
@@ -54,11 +54,11 @@ function EmotionTimeline({ items, selectedDate }: EmotionTimelineProps): React.J
           <article
             key={item.id}
             data-timeline-item-id={item.id}
-            className="rounded-3xl border border-white/10 bg-black/20 px-4 py-4"
+            className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] px-4 py-4"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+                <div className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] p-2">
                   <img
                     alt={asset.displayName}
                     className="garden-sprite h-7 w-7"
@@ -66,15 +66,15 @@ function EmotionTimeline({ items, selectedDate }: EmotionTimelineProps): React.J
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">{asset.displayName}</p>
-                  <p className="mt-1 text-xs text-white/45">
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">{asset.displayName}</p>
+                  <p className="mt-1 text-xs text-[var(--text-secondary)]">
                     {item.timestamp} · {getGrowthStageLabel(item.growthStage)}
                   </p>
                 </div>
               </div>
               <div className="text-right">
                 <span
-                  className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] text-white/70"
+                  className="rounded-[2px] border-2 border-[var(--border-primary)] px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] text-[var(--text-secondary)]"
                   style={{ background: `${asset.colorHex}22` }}
                 >
                   #{item.id}
@@ -85,10 +85,10 @@ function EmotionTimeline({ items, selectedDate }: EmotionTimelineProps): React.J
             {analysis ? (
               <div className="mt-4 grid gap-3 md:grid-cols-[0.82fr_1.18fr]">
                 <div className="space-y-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/30">触发场景</p>
-                    <p className="mt-2 text-sm font-semibold text-white">{analysis.triggerScene}</p>
-                    <p className="mt-1 text-xs text-white/45">
+                  <div className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] px-3 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">触发场景</p>
+                    <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{analysis.triggerScene}</p>
+                    <p className="mt-1 text-xs text-[var(--text-secondary)]">
                       {intensityLabel ? `${intensityLabel}强度` : '已记录'} · {analysis.timeContextLabel}
                     </p>
                   </div>
@@ -98,7 +98,7 @@ function EmotionTimeline({ items, selectedDate }: EmotionTimelineProps): React.J
                       {analysis.suggestedLabels.map((label) => (
                         <span
                           key={`${item.id}-${label}`}
-                          className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] text-white/70"
+                          className="rounded-[2px] border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] text-[var(--text-secondary)]"
                         >
                           {label}
                         </span>
@@ -107,9 +107,9 @@ function EmotionTimeline({ items, selectedDate }: EmotionTimelineProps): React.J
                   ) : null}
                 </div>
 
-                <div className="rounded-2xl border border-rose-300/15 bg-rose-400/10 px-3 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-rose-100/70">引导问题</p>
-                  <p className="mt-2 text-sm leading-6 text-rose-50">
+                <div className="rounded-[4px] border-2 border-[var(--accent-purple)] bg-[color-mix(in_srgb,var(--accent-purple)_8%,var(--bg-panel))] px-3 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-purple)]">引导问题</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--text-primary)]">
                     {analysis.guidanceQuestion}
                   </p>
                 </div>

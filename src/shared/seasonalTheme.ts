@@ -47,10 +47,10 @@ const combinedLabelMap: Record<string, string> = {
 }
 
 const moodTints: Record<CalendarSeason, string> = {
-  spring: 'rgba(52, 211, 153, 0.08)',
-  summer: 'rgba(251, 191, 36, 0.08)',
-  autumn: 'rgba(251, 146, 60, 0.08)',
-  winter: 'rgba(147, 197, 253, 0.08)'
+  spring: 'rgba(76, 175, 80, 0.22)',
+  summer: 'rgba(255, 193, 7, 0.22)',
+  autumn: 'rgba(216, 67, 21, 0.18)',
+  winter: 'rgba(25, 118, 210, 0.18)'
 }
 
 export function getGardenSeasonByLevel(level: 1 | 2 | 3): GardenSeason {

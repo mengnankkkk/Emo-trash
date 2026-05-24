@@ -30,10 +30,10 @@ function EmotionFilterBar({ selectedTags, onChange }: EmotionFilterBarProps): Re
             data-selected={selected ? 'true' : 'false'}
             onClick={() => toggleTag(asset.emotionTag)}
             className={[
-              'flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition',
+              'flex items-center gap-2 rounded-[2px] border-2 px-3 py-2 text-xs font-semibold transition',
               selected
-                ? 'border-rose-300 bg-rose-400/15 text-rose-100'
-                : 'border-white/10 bg-black/20 text-white/60 hover:text-white'
+                ? 'border-[var(--accent-purple)] bg-[color-mix(in_srgb,var(--accent-purple)_12%,var(--bg-panel))] text-[var(--accent-purple)]'
+                : 'border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             ].join(' ')}
           >
             <img alt={asset.displayName} className="garden-sprite h-4 w-4" src={asset.textureUrl} />

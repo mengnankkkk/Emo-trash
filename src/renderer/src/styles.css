@@ -1,18 +1,105 @@
 @import 'tailwindcss';
 
 :root {
-  color-scheme: dark;
   font-family: 'Silkscreen', monospace, system-ui;
-  background: #0a0a12;
-  --season-tint: transparent;
-  --pixel-border: 2px solid rgba(255, 255, 255, 0.12);
+
+  --accent-rose: #e91e63;
+  --accent-cyan: #00838f;
+  --accent-amber: #e65100;
+  --accent-emerald: #2e7d32;
+  --accent-purple: #7b1fa2;
+  --accent-sky: #0277bd;
+  --accent-yellow: #f9a825;
+
+  --accent-rose-soft: #fce4ec;
+  --accent-cyan-soft: #e0f7fa;
+  --accent-amber-soft: #fff3e0;
+  --accent-emerald-soft: #e8f5e9;
+  --accent-purple-soft: #f3e5f5;
+  --accent-sky-soft: #e1f5fe;
+  --accent-yellow-soft: #fffde7;
+
+  --bg-base: #fef6e4;
+  --bg-panel: #fffaf0;
+  --bg-surface: #f3e8d2;
+  --bg-overlay: rgba(254, 246, 228, 0.9);
+  --text-primary: #1a2030;
+  --text-secondary: #485066;
+  --text-muted: #707890;
+  --border-primary: #2a334a;
+  --border-strong: #1a2030;
+  --pixel-shadow: rgba(26, 32, 48, 0.4);
+  --dither-color: rgba(26, 32, 48, 0.04);
+  --season-tint: rgba(76, 175, 80, 0.08);
+  --season-tint-2: rgba(233, 30, 99, 0.06);
+
+  --pixel-border: 3px solid var(--border-primary);
   --pixel-radius: 4px;
 }
 
-[data-calendar-season="spring"] { --season-tint: rgba(52, 211, 153, 0.05); }
-[data-calendar-season="summer"] { --season-tint: rgba(251, 191, 36, 0.05); }
-[data-calendar-season="autumn"] { --season-tint: rgba(251, 146, 60, 0.05); }
-[data-calendar-season="winter"] { --season-tint: rgba(147, 197, 253, 0.05); }
+[data-calendar-season="spring"] {
+  --bg-base: #fef6f9;
+  --bg-panel: #fff8fb;
+  --bg-surface: #fde4ec;
+  --bg-overlay: rgba(254, 246, 249, 0.9);
+  --text-primary: #2d1b2e;
+  --text-secondary: #5a4760;
+  --text-muted: #8a7a92;
+  --border-primary: #2d1b2e;
+  --border-strong: #1a0f1c;
+  --pixel-shadow: rgba(45, 27, 46, 0.35);
+  --dither-color: rgba(233, 30, 99, 0.04);
+  --season-tint: rgba(129, 199, 132, 0.18);
+  --season-tint-2: rgba(244, 143, 177, 0.18);
+}
+
+[data-calendar-season="summer"] {
+  --bg-base: #fff8e8;
+  --bg-panel: #fffceb;
+  --bg-surface: #ffeaa6;
+  --bg-overlay: rgba(255, 248, 232, 0.9);
+  --text-primary: #2a1d0a;
+  --text-secondary: #5a4720;
+  --text-muted: #8a7440;
+  --border-primary: #2a1d0a;
+  --border-strong: #1a1206;
+  --pixel-shadow: rgba(42, 29, 10, 0.35);
+  --dither-color: rgba(249, 168, 37, 0.05);
+  --season-tint: rgba(255, 213, 79, 0.22);
+  --season-tint-2: rgba(2, 136, 209, 0.14);
+}
+
+[data-calendar-season="autumn"] {
+  --bg-base: #fdecdc;
+  --bg-panel: #fff5ea;
+  --bg-surface: #f5cfa8;
+  --bg-overlay: rgba(253, 236, 220, 0.9);
+  --text-primary: #2c1810;
+  --text-secondary: #5a3825;
+  --text-muted: #8a6048;
+  --border-primary: #2c1810;
+  --border-strong: #1a0e08;
+  --pixel-shadow: rgba(44, 24, 16, 0.35);
+  --dither-color: rgba(216, 67, 21, 0.04);
+  --season-tint: rgba(255, 138, 101, 0.2);
+  --season-tint-2: rgba(255, 213, 79, 0.16);
+}
+
+[data-calendar-season="winter"] {
+  --bg-base: #eaf4fc;
+  --bg-panel: #f5fafd;
+  --bg-surface: #c8def0;
+  --bg-overlay: rgba(234, 244, 252, 0.9);
+  --text-primary: #0d1e2e;
+  --text-secondary: #2e4660;
+  --text-muted: #5a7088;
+  --border-primary: #0d1e2e;
+  --border-strong: #050d18;
+  --pixel-shadow: rgba(13, 30, 46, 0.35);
+  --dither-color: rgba(25, 118, 210, 0.04);
+  --season-tint: rgba(144, 202, 249, 0.22);
+  --season-tint-2: rgba(186, 220, 255, 0.18);
+}
 
 * {
   box-sizing: border-box;
@@ -29,10 +116,26 @@ body,
 body {
   min-height: 100vh;
   background:
-    radial-gradient(ellipse at top, var(--season-tint), transparent 50%),
-    linear-gradient(180deg, #0a0a12 0%, #0d0f1a 50%, #0a0a12 100%);
-  color: #e2e8f0;
+    repeating-linear-gradient(
+      0deg,
+      var(--dither-color) 0px,
+      var(--dither-color) 2px,
+      transparent 2px,
+      transparent 4px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      var(--dither-color) 0px,
+      var(--dither-color) 2px,
+      transparent 2px,
+      transparent 4px
+    ),
+    radial-gradient(ellipse at top left, var(--season-tint), transparent 50%),
+    radial-gradient(ellipse at bottom right, var(--season-tint-2), transparent 50%),
+    var(--bg-base);
+  color: var(--text-primary);
   image-rendering: pixelated;
+  transition: background-color 0.6s ease, color 0.4s ease;
 }
 
 textarea::-webkit-scrollbar {
@@ -42,50 +145,61 @@ textarea::-webkit-scrollbar {
 /* ═══ 像素化全局组件 ═══ */
 
 .pixel-panel {
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 3px solid var(--border-primary);
   border-radius: 4px;
-  background: rgba(10, 10, 18, 0.85);
+  background: var(--bg-panel);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    4px 4px 0 rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    4px 4px 0 var(--pixel-shadow);
+  transition: background-color 0.4s ease, border-color 0.4s ease;
 }
 
+.pixel-panel--rose { border-color: #e91e63; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 4px 4px 0 rgba(233,30,99,0.3); }
+.pixel-panel--cyan { border-color: #00838f; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 4px 4px 0 rgba(0,131,143,0.3); }
+.pixel-panel--amber { border-color: #e65100; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 4px 4px 0 rgba(230,81,0,0.3); }
+.pixel-panel--emerald { border-color: #2e7d32; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 4px 4px 0 rgba(46,125,50,0.3); }
+.pixel-panel--purple { border-color: #7b1fa2; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 4px 4px 0 rgba(123,31,162,0.3); }
+.pixel-panel--sky { border-color: #0277bd; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 4px 4px 0 rgba(2,119,189,0.3); }
+.pixel-panel--yellow { border-color: #f9a825; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 4px 4px 0 rgba(249,168,37,0.3); }
+
 .pixel-btn {
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 3px solid var(--border-primary);
   border-radius: 2px;
   padding: 6px 12px;
   font-family: 'Silkscreen', monospace;
   font-size: 10px;
   letter-spacing: 0.05em;
   cursor: pointer;
+  background: var(--bg-surface);
+  color: var(--text-primary);
   transition: transform 80ms, box-shadow 80ms, border-color 120ms;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: 3px 3px 0 var(--pixel-shadow);
   image-rendering: pixelated;
 }
 
 .pixel-btn:hover {
   transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6);
-  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 4px 4px 0 var(--pixel-shadow);
+  border-color: var(--border-strong);
 }
 
 .pixel-btn:active {
   transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4);
+  box-shadow: 1px 1px 0 var(--pixel-shadow);
 }
 
 .pixel-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   transform: none;
-  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 2px 2px 0 var(--pixel-shadow);
 }
 
 .pixel-progress {
   height: 8px;
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  border: 3px solid var(--border-primary);
   border-radius: 2px;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--bg-surface);
   overflow: hidden;
 }
 
@@ -100,10 +214,14 @@ textarea::-webkit-scrollbar {
 .game-nav {
   display: flex;
   gap: 2px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 3px solid var(--border-primary);
+  border-top: 4px solid;
+  border-image: linear-gradient(90deg, #e91e63, #f9a825, #4caf50, #0277bd, #7b1fa2) 1;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--bg-surface);
   padding: 3px;
+  box-shadow: 4px 4px 0 var(--pixel-shadow);
+  transition: background-color 0.4s ease, border-color 0.4s ease;
 }
 
 .game-nav-item {
@@ -116,19 +234,46 @@ textarea::-webkit-scrollbar {
   border-radius: 2px;
   cursor: pointer;
   transition: background 100ms, border-color 100ms;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-secondary);
 }
 
 .game-nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
 }
 
 .game-nav-item[data-selected="true"] {
-  background: rgba(251, 113, 133, 0.15);
-  border-color: rgba(251, 113, 133, 0.5);
-  color: #fda4af;
-  box-shadow: inset 0 0 8px rgba(251, 113, 133, 0.1);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.game-nav-item[data-selected="true"][data-app-page="release"] {
+  background: rgba(233, 30, 99, 0.12);
+  border-color: #e91e63;
+  color: #ad1457;
+}
+
+.game-nav-item[data-selected="true"][data-app-page="analytics"] {
+  background: rgba(2, 119, 189, 0.12);
+  border-color: #0277bd;
+  color: #01579b;
+}
+
+.game-nav-item[data-selected="true"][data-app-page="history"] {
+  background: rgba(123, 31, 162, 0.12);
+  border-color: #7b1fa2;
+  color: #4a148c;
+}
+
+.game-nav-item[data-selected="true"][data-app-page="garden"] {
+  background: rgba(46, 125, 50, 0.12);
+  border-color: #2e7d32;
+  color: #1b5e20;
+}
+
+.game-nav-item[data-selected="true"][data-app-page="achievements"] {
+  background: rgba(249, 168, 37, 0.15);
+  border-color: #f9a825;
+  color: #e65100;
 }
 
 /* ═══ HUD 状态栏 ═══ */
@@ -138,24 +283,30 @@ textarea::-webkit-scrollbar {
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  border: 2px solid rgba(255, 255, 255, 0.08);
+  border: 3px solid var(--border-primary);
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--bg-panel);
   font-size: 10px;
   font-family: 'Silkscreen', monospace;
+  box-shadow: 4px 4px 0 var(--pixel-shadow);
+  transition: background-color 0.4s ease, border-color 0.4s ease;
 }
 
 .game-hud-stat {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary);
 }
 
 .game-hud-stat-value {
-  color: #fda4af;
   font-weight: 700;
 }
+
+.game-hud-stat:nth-child(1) .game-hud-stat-value { color: #e91e63; }
+.game-hud-stat:nth-child(2) .game-hud-stat-value { color: #2e7d32; }
+.game-hud-stat:nth-child(3) .game-hud-stat-value { color: #e65100; }
+.game-hud-stat:nth-child(4) .game-hud-stat-value { color: #0277bd; }
 
 /* ═══ 花园卡片 ═══ */
 
@@ -172,9 +323,9 @@ textarea::-webkit-scrollbar {
 }
 
 @keyframes sproutCard {
-  0% { transform: translateY(10px); border-color: rgba(255, 255, 255, 0.08); }
-  45% { transform: translateY(-2px); border-color: rgba(251, 113, 133, 0.35); box-shadow: 4px 4px 0 rgba(251, 113, 133, 0.15); }
-  100% { transform: translateY(0); border-color: rgba(255, 255, 255, 0.1); box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4); }
+  0% { transform: translateY(10px); border-color: var(--border-primary); }
+  45% { transform: translateY(-2px); border-color: var(--accent-rose); box-shadow: 4px 4px 0 var(--pixel-shadow); }
+  100% { transform: translateY(0); border-color: var(--border-primary); box-shadow: 3px 3px 0 var(--pixel-shadow); }
 }
 
 @keyframes flowerSwayIdle {
@@ -195,11 +346,12 @@ textarea::-webkit-scrollbar {
 }
 
 .garden-card {
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 3px solid var(--border-primary);
   border-radius: 4px;
-  background: rgba(10, 10, 18, 0.8);
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+  background: var(--bg-panel);
+  box-shadow: 3px 3px 0 var(--pixel-shadow);
   image-rendering: pixelated;
+  transition: background-color 0.4s ease, border-color 0.4s ease;
 }
 
 .garden-card--idle .garden-bloom {
@@ -218,8 +370,8 @@ textarea::-webkit-scrollbar {
 
 .garden-card--interactive:hover {
   transform: translate(-2px, -2px);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.5);
+  border-color: var(--border-strong);
+  box-shadow: 5px 5px 0 var(--pixel-shadow);
 }
 
 .garden-card--interactive:hover .garden-bloom {
@@ -232,20 +384,20 @@ textarea::-webkit-scrollbar {
 .garden-card--swaying .garden-bloom { animation: flowerSway 1.2s ease-in-out infinite; transform-origin: 50% 100%; }
 .garden-card--swaying .garden-glow { animation: flowerGlowBreath 1.8s ease-in-out infinite; }
 
-.garden-card--growth-2 { border-color: rgba(196, 132, 252, 0.35); }
+.garden-card--growth-2 { border-color: rgba(196, 132, 252, 0.6); }
 .garden-card--growth-2 .garden-bloom { animation-duration: 3s; }
 .garden-card--growth-2 .garden-glow { background: rgba(192, 132, 252, 0.42) !important; animation-duration: 3.5s; }
 
-.garden-card--growth-3 { border-color: rgba(253, 224, 71, 0.4); box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4), 0 0 12px rgba(253, 224, 71, 0.08); }
-.garden-card--growth-3 .garden-bloom { animation-duration: 2.4s; filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.2)); }
+.garden-card--growth-3 { border-color: rgba(253, 224, 71, 0.7); box-shadow: 3px 3px 0 var(--pixel-shadow), 0 0 12px rgba(253, 224, 71, 0.15); }
+.garden-card--growth-3 .garden-bloom { animation-duration: 2.4s; filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.3)); }
 .garden-card--growth-3 .garden-glow { background: rgba(253, 224, 71, 0.4) !important; animation-duration: 2.8s; }
 
-.garden-card--growth-4 { border-color: rgba(251, 113, 133, 0.4); box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4), 0 0 16px rgba(251, 113, 133, 0.1); }
-.garden-card--growth-4 .garden-bloom { animation-duration: 2s; filter: drop-shadow(0 0 8px rgba(251, 113, 133, 0.25)); }
+.garden-card--growth-4 { border-color: rgba(251, 113, 133, 0.7); box-shadow: 3px 3px 0 var(--pixel-shadow), 0 0 16px rgba(251, 113, 133, 0.15); }
+.garden-card--growth-4 .garden-bloom { animation-duration: 2s; filter: drop-shadow(0 0 8px rgba(251, 113, 133, 0.3)); }
 .garden-card--growth-4 .garden-glow { background: rgba(251, 113, 133, 0.45) !important; animation-duration: 2.4s; }
 
-.garden-card--growth-5 { border-color: rgba(52, 211, 153, 0.5); box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4), 0 0 24px rgba(52, 211, 153, 0.12); }
-.garden-card--growth-5 .garden-bloom { animation-duration: 1.6s; filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.3)) brightness(1.1); }
+.garden-card--growth-5 { border-color: rgba(52, 211, 153, 0.7); box-shadow: 3px 3px 0 var(--pixel-shadow), 0 0 24px rgba(52, 211, 153, 0.18); }
+.garden-card--growth-5 .garden-bloom { animation-duration: 1.6s; filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.35)) brightness(1.1); }
 .garden-card--growth-5 .garden-glow { background: rgba(52, 211, 153, 0.5) !important; animation-duration: 2s; }
 
 @keyframes witherPulse {
@@ -254,9 +406,9 @@ textarea::-webkit-scrollbar {
 }
 
 .garden-card--withered {
-  border-color: rgba(120, 113, 108, 0.3) !important;
+  border-color: rgba(120, 113, 108, 0.4) !important;
   animation: witherPulse 4s ease-in-out infinite;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2) !important;
 }
 
 .garden-card--withered .garden-bloom {
@@ -293,7 +445,7 @@ textarea::-webkit-scrollbar {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(52, 211, 153, 0.08) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(249, 168, 37, 0.15) 25%, rgba(233, 30, 99, 0.1) 50%, rgba(2, 119, 189, 0.12) 75%, transparent 100%);
   background-size: 200% 100%;
   animation: achievementShimmer 6s ease-in-out infinite;
   pointer-events: none;
@@ -364,7 +516,7 @@ textarea::-webkit-scrollbar {
 .garden-atmosphere {
   position: relative;
   overflow: hidden;
-  border-radius: 1.5rem;
+  border-radius: 4px;
   transition: box-shadow 0.6s ease;
 }
 
@@ -395,7 +547,6 @@ textarea::-webkit-scrollbar {
   will-change: transform, opacity;
 }
 
-/* 春：向上漂浮 */
 @keyframes particleFloat {
   0% { opacity: 0; transform: translateY(0) translateX(0); }
   15% { opacity: 0.7; }
@@ -403,7 +554,6 @@ textarea::-webkit-scrollbar {
   100% { opacity: 0; transform: translateY(-100%) translateX(12px); }
 }
 
-/* 夏：闪烁漂移 */
 @keyframes particleFlicker {
   0% { opacity: 0; transform: translateY(0) scale(0.6); }
   20% { opacity: 0.8; transform: translateY(-10%) scale(1); }
@@ -412,7 +562,6 @@ textarea::-webkit-scrollbar {
   100% { opacity: 0; transform: translateY(-80%) scale(0.5); }
 }
 
-/* 秋：下落飘散 */
 @keyframes particleFall {
   0% { opacity: 0; transform: translateY(0) translateX(0) rotate(0deg); }
   15% { opacity: 0.65; }
@@ -420,7 +569,6 @@ textarea::-webkit-scrollbar {
   100% { opacity: 0; transform: translateY(100%) translateX(-8px) rotate(180deg); }
 }
 
-/* 冬：缓慢飘雪 */
 @keyframes particleSnow {
   0% { opacity: 0; transform: translateY(0) translateX(0); }
   10% { opacity: 0.6; }
@@ -432,6 +580,99 @@ textarea::-webkit-scrollbar {
 .season-particle[data-season="summer"] { animation-name: particleFlicker; }
 .season-particle[data-season="autumn"] { animation-name: particleFall; }
 .season-particle[data-season="winter"] { animation-name: particleSnow; }
+
+/* ═══ 季节装饰像素图案 ═══ */
+
+[data-calendar-season="spring"]::after {
+  content: '';
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 4px;
+  height: 4px;
+  pointer-events: none;
+  opacity: 0.7;
+  box-shadow:
+    0 0 0 #e91e63,
+    4px -4px 0 #4caf50,
+    -4px -4px 0 #f48fb1,
+    0 -8px 0 #7b1fa2,
+    8px 0 0 #f48fb1,
+    -8px 0 0 #4caf50,
+    16px 0 0 #0277bd,
+    20px -4px 0 #e91e63,
+    12px -4px 0 #f9a825,
+    16px -8px 0 #4caf50,
+    24px 0 0 #7b1fa2,
+    -4px -12px 0 #f9a825;
+}
+
+[data-calendar-season="summer"]::after {
+  content: '';
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 4px;
+  height: 4px;
+  pointer-events: none;
+  opacity: 0.7;
+  box-shadow:
+    0 0 0 #ff6f00,
+    4px -4px 0 #0277bd,
+    -4px -4px 0 #f9a825,
+    0 -8px 0 #e91e63,
+    4px 4px 0 #4caf50,
+    -4px 4px 0 #f9a825,
+    8px 0 0 #0277bd,
+    -8px 0 0 #ff6f00,
+    0 8px 0 #7b1fa2,
+    0 -12px 0 #4caf50;
+}
+
+[data-calendar-season="autumn"]::after {
+  content: '';
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 4px;
+  height: 4px;
+  pointer-events: none;
+  opacity: 0.7;
+  box-shadow:
+    0 0 0 #d84315,
+    4px -4px 0 #f9a825,
+    -4px 4px 0 #e91e63,
+    0 -8px 0 #7b1fa2,
+    8px -8px 0 #ff6f00,
+    4px 4px 0 #4caf50,
+    -4px -4px 0 #0277bd,
+    -8px 0 0 #f9a825;
+}
+
+[data-calendar-season="winter"]::after {
+  content: '';
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 4px;
+  height: 4px;
+  pointer-events: none;
+  opacity: 0.7;
+  box-shadow:
+    0 0 0 #0277bd,
+    0 -8px 0 #7b1fa2,
+    0 8px 0 #90caf9,
+    8px 0 0 #e91e63,
+    -8px 0 0 #90caf9,
+    4px -4px 0 #f9a825,
+    -4px -4px 0 #0277bd,
+    4px 4px 0 #4caf50,
+    -4px 4px 0 #0277bd,
+    0 -12px 0 #e91e63,
+    0 12px 0 #7b1fa2,
+    12px 0 0 #f9a825,
+    -12px 0 0 #4caf50;
+}
 
 /* ═══ 无障碍 ═══ */
 

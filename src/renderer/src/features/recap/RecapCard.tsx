@@ -19,10 +19,10 @@ function RecapCard({ emotionTag, intensity, currentStreak, onDismiss }: RecapCar
   const asset = getFlowerAssetByTag(emotionTag)
 
   return (
-    <div className="recap-card flex flex-col items-center gap-5 rounded-[2rem] border border-white/10 bg-black/80 px-8 py-10 shadow-2xl shadow-black/40 backdrop-blur-md">
+    <div className="recap-card flex flex-col items-center gap-5 rounded-[4px] border-3 border-[var(--border-primary)] bg-[var(--bg-panel)] px-8 py-10 shadow-[4px_4px_0_var(--pixel-shadow)]">
       <div className="relative flex items-center justify-center">
         <span
-          className="absolute h-20 w-20 rounded-full blur-xl"
+          className="absolute h-20 w-20 rounded-[4px] blur-xl"
           style={{ background: asset.colorHex, opacity: 0.3 }}
         />
         <img
@@ -39,13 +39,13 @@ function RecapCard({ emotionTag, intensity, currentStreak, onDismiss }: RecapCar
         >
           {asset.displayName}
         </span>
-        <p className="max-w-56 text-sm leading-relaxed text-white/55">
+        <p className="max-w-56 text-sm leading-relaxed text-[var(--text-secondary)]">
           {intensityPoetry[intensity]}
         </p>
       </div>
 
       {currentStreak > 0 && (
-        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs tracking-[0.16em] text-emerald-200/70">
+        <span className="rounded-[2px] border-2 border-[var(--accent-emerald)] bg-[var(--accent-emerald-soft)] px-3 py-1 text-xs tracking-[0.16em] text-[var(--accent-emerald)]">
           连续 {currentStreak} 天
         </span>
       )}
@@ -53,7 +53,7 @@ function RecapCard({ emotionTag, intensity, currentStreak, onDismiss }: RecapCar
       <button
         type="button"
         onClick={onDismiss}
-        className="pixel-btn mt-2 bg-white/[0.06] text-white/70 hover:text-white"
+        className="pixel-btn mt-2"
       >
         继续
       </button>

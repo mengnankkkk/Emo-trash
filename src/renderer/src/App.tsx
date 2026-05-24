@@ -480,12 +480,12 @@ function App(): React.JSX.Element {
     >
       <header className="game-hud flex-wrap justify-between">
         <div className="flex items-center gap-4">
-          <span className="text-[11px] font-bold text-rose-300">EMO-TRASH</span>
+          <span className="text-[11px] font-bold" style={{ background: 'linear-gradient(90deg, #e91e63, #7b1fa2, #0277bd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>EMO-TRASH</span>
           <span className="game-hud-stat">花朵 <span className="game-hud-stat-value">{gardenItems.length}</span></span>
           <span className="game-hud-stat">连续 <span className="game-hud-stat-value">{growthSnapshot?.currentStreakDays ?? 0}天</span></span>
           <span className="game-hud-stat">浇水 <span className="game-hud-stat-value">{growthSnapshot?.manualWateringsRemaining ?? 3}/3</span></span>
         </div>
-        <span className="text-[10px] text-white/40">{growthSnapshot?.seasonalTheme?.combinedLabel ?? '新芽季'}</span>
+        <span className="text-[10px] text-[var(--text-muted)]">{growthSnapshot?.seasonalTheme?.combinedLabel ?? '新芽季'}</span>
       </header>
 
       <nav className="game-nav">
@@ -509,60 +509,65 @@ function App(): React.JSX.Element {
 
       {activePage === 'release' ? (
         <section className="grid flex-1 gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="pixel-panel flex flex-col p-5">
-            <div className="mb-4 flex items-center justify-between border-b-2 border-dashed border-white/10 pb-3">
-              <h2 className="text-sm font-bold tracking-widest text-rose-300">▼ 情绪垃圾桶</h2>
-              <span className="text-[10px] text-white/50">{statusText}</span>
+          <div className="pixel-panel pixel-panel--rose flex flex-col p-5">
+            <div className="mb-4 flex items-center justify-between border-b-3 border-dashed border-[#e91e63]/30 pb-3">
+              <h2 className="text-sm font-bold tracking-widest text-[var(--accent-rose)]">▼ 情绪垃圾桶</h2>
+              <span className="text-[10px] text-[var(--text-muted)]">{statusText}</span>
             </div>
 
             <div className="flex flex-1 flex-col gap-4">
               <CaptureInput value={inputValue} disabled={isSubmitting} onChange={setInputValue} />
-              <div className="border-2 border-white/10 bg-black/40 p-3" style={{ borderRadius: '4px' }}>
-                <div className="flex items-center justify-between gap-3 border-b-2 border-dashed border-white/5 pb-2">
-                  <h3 className="text-[11px] font-bold tracking-widest text-cyan-300">▼ AI 情绪识别</h3>
-                  <span className="border border-white/15 bg-black/40 px-2 py-0.5 text-[9px] text-white/60" style={{ borderRadius: '2px' }}>
+              <div className="border-3 border-[#00838f] bg-[var(--accent-cyan-soft)] p-3" style={{ borderRadius: '4px' }}>
+                <div className="flex items-center justify-between gap-3 border-b-3 border-dashed border-[#00838f]/30 pb-2">
+                  <h3 className="text-[11px] font-bold tracking-widest text-[var(--accent-cyan)]">▼ AI 情绪识别</h3>
+                  <span className="border-2 border-[var(--accent-purple)] bg-[var(--accent-purple-soft)] px-2 py-0.5 text-[9px] text-[var(--accent-purple)]" style={{ borderRadius: '2px' }}>
                     {isAnalyzing ? '识别中…' : analysisSummary ? analysisSummary.sourceLabel : '待输入'}
                   </span>
                 </div>
                 {analysisSummary ? (
                   <div className="mt-4 space-y-4">
                     <div className="grid gap-3 md:grid-cols-2">
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-white/30">主情绪</p>
-                        <p className="mt-2 text-base font-semibold text-white">
+                      <div className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] px-3 py-3">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">主情绪</p>
+                        <p className="mt-2 text-base font-semibold text-[var(--text-primary)]">
                           {analysisSummary.emotionTag} · {analysisSummary.intensityLabel}
                         </p>
-                        <p className="mt-1 text-xs text-white/45">
+                        <p className="mt-1 text-xs text-[var(--text-secondary)]">
                           置信度 {analysisSummary.confidence}% · {analysisSummary.timeContextLabel}
                         </p>
                       </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-white/30">触发场景</p>
-                        <p className="mt-2 text-base font-semibold text-white">
+                      <div className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] px-3 py-3">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">触发场景</p>
+                        <p className="mt-2 text-base font-semibold text-[var(--text-primary)]">
                           {analysisSummary.triggerScene}
                         </p>
-                        <p className="mt-1 text-xs text-white/45">自动结合输入与时间语境生成</p>
+                        <p className="mt-1 text-xs text-[var(--text-secondary)]">自动结合输入与时间语境生成</p>
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-rose-300/20 bg-rose-400/10 px-3 py-3">
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-rose-100/70">引导问题</p>
-                      <p className="mt-2 text-sm leading-6 text-rose-50">
+                    <div className="rounded-[4px] border-2 border-[var(--accent-rose)] bg-[var(--accent-rose-soft)] px-3 py-3">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-rose)]">引导问题</p>
+                      <p className="mt-2 text-sm leading-6 text-[var(--text-primary)]">
                         {analysisSummary.guidanceQuestion}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {analysisSummary.suggestedLabels.map((label) => (
-                        <span
-                          key={label}
-                          className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] text-white/70"
-                        >
-                          {label}
-                        </span>
-                      ))}
+                      {analysisSummary.suggestedLabels.map((label, idx) => {
+                        const tagColors = ['#e91e63', '#7b1fa2', '#0277bd', '#2e7d32', '#e65100', '#00838f']
+                        const color = tagColors[idx % tagColors.length]
+                        return (
+                          <span
+                            key={label}
+                            className="rounded-[2px] border-2 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em]"
+                            style={{ borderColor: color, color, background: `${color}11` }}
+                          >
+                            {label}
+                          </span>
+                        )
+                      })}
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-4 text-sm leading-6 text-white/45">
+                  <p className="mt-4 text-sm leading-6 text-[var(--text-secondary)]">
                     输入几句话后，这里会自动显示识别到的主情绪、触发场景和温和追问。
                   </p>
                 )}
@@ -571,10 +576,10 @@ function App(): React.JSX.Element {
             </div>
           </div>
 
-          <div className="pixel-panel flex flex-col gap-4 p-5">
-            <div className="border-b-2 border-dashed border-white/10 pb-3">
-              <h2 className="text-sm font-bold tracking-widest text-amber-300">▼ 粉碎仪式</h2>
-              <p className="mt-1 text-[10px] text-white/40">选择特效后长按提交</p>
+          <div className="pixel-panel pixel-panel--amber flex flex-col gap-4 p-5">
+            <div className="border-b-3 border-dashed border-[#e65100]/30 pb-3">
+              <h2 className="text-sm font-bold tracking-widest text-[var(--accent-amber)]">▼ 粉碎仪式</h2>
+              <p className="mt-1 text-[10px] text-[var(--text-muted)]">选择特效后长按提交</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {ritualEffectOptions.map((option) => {
@@ -588,30 +593,34 @@ function App(): React.JSX.Element {
                     onClick={() => setEffectType(option.value)}
                     className="pixel-btn text-left"
                     style={{
-                      background: selected ? 'rgba(251, 113, 133, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                      borderColor: selected ? 'rgba(251, 113, 133, 0.5)' : 'rgba(255, 255, 255, 0.15)',
-                      color: selected ? '#fda4af' : 'rgba(255, 255, 255, 0.6)'
+                      background: selected ? 'var(--accent-amber-soft)' : 'var(--bg-surface)',
+                      borderColor: selected ? 'var(--accent-amber)' : 'var(--border-primary)',
+                      color: selected ? 'var(--accent-amber)' : 'var(--text-secondary)'
                     }}
                   >
                     <span className="block text-[11px] font-bold">[{option.label}]</span>
-                    <span className="mt-0.5 block text-[9px] text-white/45">{option.subtitle}</span>
+                    <span className="mt-0.5 block text-[9px] text-[var(--text-muted)]">{option.subtitle}</span>
                   </button>
                 )
               })}
             </div>
-            <div className="border-2 border-white/10 bg-black/40 p-3" style={{ borderRadius: '4px' }}>
-              <p className="text-[10px] text-amber-300/80">▸ {activeEffect.label}</p>
-              <p className="mt-1 text-[10px] leading-5 text-white/55">{activeEffect.description}</p>
+            <div className="border-3 border-[var(--border-primary)] bg-[var(--bg-surface)] p-3" style={{ borderRadius: '4px' }}>
+              <p className="text-[10px] text-[var(--accent-amber)]">▸ {activeEffect.label}</p>
+              <p className="mt-1 text-[10px] leading-5 text-[var(--text-secondary)]">{activeEffect.description}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {activeEffect.recommendedTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="border border-amber-300/30 bg-amber-300/5 px-1.5 py-0.5 text-[9px] text-amber-200/80"
-                    style={{ borderRadius: '2px' }}
-                  >
-                    {tag}
-                  </span>
-                ))}
+                {activeEffect.recommendedTags.map((tag, idx) => {
+                  const tagColors = ['#e91e63', '#e65100', '#7b1fa2', '#0277bd']
+                  const color = tagColors[idx % tagColors.length]
+                  return (
+                    <span
+                      key={tag}
+                      className="border-2 px-1.5 py-0.5 text-[9px]"
+                      style={{ borderRadius: '2px', borderColor: color, color, background: `${color}11` }}
+                    >
+                      {tag}
+                    </span>
+                  )
+                })}
               </div>
             </div>
             <RitualCanvas
@@ -620,14 +629,14 @@ function App(): React.JSX.Element {
               particleState={particleState}
               effectType={effectType}
             />
-            <p className="text-center text-[10px] leading-5 text-white/40">
+            <p className="text-center text-[10px] leading-5 text-[var(--text-muted)]">
               ※ 仅提取张力特征，不存原文
             </p>
             <GardenView items={previewGardenItems} growthSnapshot={growthSnapshot} onWaterFlower={handleWaterFlower} wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0} />
           </div>
 
           {!ritualActive && recapData && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] backdrop-blur-sm">
               <RecapCard
                 emotionTag={recapData.emotionTag}
                 intensity={recapData.intensity}
@@ -641,20 +650,20 @@ function App(): React.JSX.Element {
 
       {activePage === 'analytics' ? (
         <section className="grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
-          <div className="pixel-panel p-5">
-            <h2 className="mb-3 border-b-2 border-dashed border-white/10 pb-2 text-sm font-bold tracking-widest text-cyan-300">▼ 情绪统计</h2>
+          <div className="pixel-panel pixel-panel--sky p-5">
+            <h2 className="mb-3 border-b-3 border-dashed border-[#0277bd]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-sky)]">▼ 情绪统计</h2>
             <EmotionStatsPanel summary={statsSummary} loading={isDashboardLoading} />
           </div>
-          <div className="pixel-panel p-5">
-            <h2 className="mb-3 border-b-2 border-dashed border-white/10 pb-2 text-sm font-bold tracking-widest text-emerald-300">▼ 花园成长</h2>
+          <div className="pixel-panel pixel-panel--emerald p-5">
+            <h2 className="mb-3 border-b-3 border-dashed border-[#2e7d32]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-emerald)]">▼ 花园成长</h2>
             <GardenGrowthPanel snapshot={growthSnapshot} loading={isDashboardLoading} />
           </div>
         </section>
       ) : null}
 
       {activePage === 'history' ? (
-        <section className="pixel-panel flex flex-col gap-4 p-5">
-          <h2 className="border-b-2 border-dashed border-white/10 pb-2 text-sm font-bold tracking-widest text-purple-300">▼ 情绪历史</h2>
+        <section className="pixel-panel pixel-panel--purple flex flex-col gap-4 p-5">
+          <h2 className="border-b-3 border-dashed border-[#7b1fa2]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-purple)]">▼ 情绪历史</h2>
           <EmotionFilterBar
             selectedTags={emotionFilter}
             onChange={(nextTags) => {
@@ -670,10 +679,10 @@ function App(): React.JSX.Element {
               void refreshTimeline(nextDate, emotionFilter)
             }}
           />
-          <div className="space-y-2 border-t-2 border-dashed border-white/10 pt-3">
+          <div className="space-y-2 border-t-3 border-dashed border-[var(--border-primary)] pt-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold tracking-widest text-purple-300">▸ {timelineHeadline}</h3>
-              <span className="text-[10px] text-white/35">按情绪筛选</span>
+              <h3 className="text-xs font-bold tracking-widest text-[var(--accent-purple)]">▸ {timelineHeadline}</h3>
+              <span className="text-[10px] text-[var(--text-muted)]">按情绪筛选</span>
             </div>
             <EmotionTimeline items={timelineItems} selectedDate={selectedDate} />
           </div>
@@ -682,12 +691,12 @@ function App(): React.JSX.Element {
 
       {activePage === 'garden' ? (
         <section className="grid gap-4 xl:grid-cols-[0.84fr_1.16fr]">
-          <div className="pixel-panel p-5">
-            <h2 className="mb-3 border-b-2 border-dashed border-white/10 pb-2 text-sm font-bold tracking-widest text-emerald-300">▼ 花园状态</h2>
+          <div className="pixel-panel pixel-panel--emerald p-5">
+            <h2 className="mb-3 border-b-3 border-dashed border-[#2e7d32]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-emerald)]">▼ 花园状态</h2>
             <GardenGrowthPanel snapshot={growthSnapshot} loading={isDashboardLoading} />
           </div>
-          <div className="pixel-panel p-5">
-            <h2 className="mb-3 border-b-2 border-dashed border-white/10 pb-2 text-sm font-bold tracking-widest text-emerald-300">▼ 像素花园</h2>
+          <div className="pixel-panel pixel-panel--cyan p-5">
+            <h2 className="mb-3 border-b-3 border-dashed border-[#00838f]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-cyan)]">▼ 像素花园</h2>
             <GardenView items={gardenItems} growthSnapshot={growthSnapshot} onWaterFlower={handleWaterFlower} wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0} />
           </div>
         </section>
