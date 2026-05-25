@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3'
 import type { EmotionTag, GardenItem, ReleaseEmotionInput } from '../../../preload/api'
 import { emotionAnalysisMetadataSchema, getTimeContextLabel } from '../../../shared/emotionAnalysis'
 import { enrichGardenItems } from '../../../shared/emotionInsights'
+import { determineRarity, type FlowerRarity } from '../../../shared/rarity'
 
 type GardenRow = {
   id: number
@@ -14,6 +15,7 @@ type GardenRow = {
   total_waterings: number
   last_watered_on: string
   emotion_tag: EmotionTag
+  rarity: FlowerRarity
   emotion_intensity?: string | null
   trigger_scene?: string | null
   guidance_question?: string | null
@@ -25,7 +27,7 @@ type GardenRow = {
 
 const GARDEN_SELECT_COLUMNS = `
   id, timestamp, released_on, released_hour, flower_type, color_hex, growth_stage,
-  total_waterings, last_watered_on, emotion_tag,
+  total_waterings, last_watered_on, emotion_tag, rarity,
   emotion_intensity, trigger_scene, guidance_question, suggested_labels,
   analysis_confidence, analysis_source, source_model
 `
@@ -39,6 +41,7 @@ export class EmotionRepository {
     releasedOn: string,
     releasedHour: number
   ): GardenItem {
+    const rarity = determineRarity()
     const result = this.database
       .prepare(
         `
@@ -46,9 +49,9 @@ export class EmotionRepository {
             timestamp, flower_type, color_hex, growth_stage,
             emotion_tag, emotion_intensity, trigger_scene, guidance_question,
             suggested_labels, analysis_confidence, analysis_source, source_model,
-            released_on, released_hour, total_waterings, last_watered_on
+            released_on, released_hour, total_waterings, last_watered_on, rarity
           )
-          VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+          VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
         `
       )
       .run(
@@ -65,7 +68,8 @@ export class EmotionRepository {
         input.analysis.sourceModel,
         releasedOn,
         releasedHour,
-        releasedOn
+        releasedOn,
+        rarity
       )
 
     const newId = Number(result.lastInsertRowid)
@@ -144,9 +148,7 @@ export class EmotionRepository {
 
   syncGrowthStages(items: GardenItem[]): void {
     const nextItems = enrichGardenItems(items)
-    const update = this.database.prepare(
-      `UPDATE digital_garden SET growth_stage = ? WHERE id = ?`
-    )
+    const update = this.database.prepare(`UPDATE digital_garden SET growth_stage = ? WHERE id = ?`)
 
     const commit = this.database.transaction((entries: GardenItem[]) => {
       entries.forEach((item) => {
@@ -201,6 +203,7 @@ export class EmotionRepository {
       totalWaterings: row.total_waterings ?? 0,
       lastWateredOn: row.last_watered_on ?? '',
       emotionTag: row.emotion_tag,
+      rarity: row.rarity ?? 'common',
       analysis: analysis.success ? analysis.data : undefined
     }
   }

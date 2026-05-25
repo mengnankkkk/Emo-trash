@@ -72,7 +72,8 @@ const browserPreviewApi: EmoTrashApi = {
       growthStage: 1,
       totalWaterings: 1,
       lastWateredOn: toDateKey(now),
-      emotionTag: input.emotionTag
+      emotionTag: input.emotionTag,
+      rarity: 'common'
     }
 
     const garden = enrichGardenItems([nextItem, ...readGarden()])

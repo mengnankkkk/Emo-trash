@@ -5,6 +5,7 @@ import {
   emotionAnalysisSchema,
   emotionIntensitySchema
 } from '../shared/emotionAnalysis'
+import { rarityValues } from '../shared/rarity'
 
 export const emoTrashChannels = {
   analyzeEmotion: 'emotion:analyze',
@@ -21,6 +22,7 @@ export const emoTrashChannels = {
 } as const
 
 export const emotionTagSchema = z.enum(emotionTagValues)
+export const raritySchema = z.enum(rarityValues)
 export const emotionAnalysisInputSchema = z.object({
   text: z.string().trim().min(1).max(4000)
 })
@@ -38,6 +40,7 @@ export const gardenItemSchema = z.object({
   totalWaterings: z.number().int().nonnegative(),
   lastWateredOn: z.string(),
   emotionTag: emotionTagSchema,
+  rarity: raritySchema,
   analysis: emotionAnalysisMetadataSchema.optional()
 })
 
@@ -128,7 +131,13 @@ export const shakeWindowInputSchema = z.object({
   durationMs: z.number().min(120).max(1000).default(420)
 })
 
-export const achievementCategorySchema = z.enum(['milestone', 'streak', 'growth', 'diversity', 'ritual'])
+export const achievementCategorySchema = z.enum([
+  'milestone',
+  'streak',
+  'growth',
+  'diversity',
+  'ritual'
+])
 
 export const achievementStatusSchema = z.object({
   id: z.string(),
@@ -152,6 +161,7 @@ export const achievementSummarySchema = z.object({
 })
 
 export type EmotionTag = z.infer<typeof emotionTagSchema>
+export type FlowerRarity = z.infer<typeof raritySchema>
 export type EmotionAnalysisInput = z.infer<typeof emotionAnalysisInputSchema>
 export type EmotionIntensity = z.infer<typeof emotionIntensitySchema>
 export type EmotionStatsRange = z.infer<typeof emotionStatsRangeSchema>

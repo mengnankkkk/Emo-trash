@@ -6,10 +6,10 @@ import type {
   EmotionStatsSummary,
   EmotionTag,
   EmotionTimelineEntry,
+  FlowerRarity,
   GardenGrowthSnapshot,
   GardenItem,
-  ReleaseEmotionInput,
-  RitualEffect
+  ReleaseEmotionInput
 } from './types/emotion'
 import CaptureInput from './features/capture/CaptureInput'
 import DailyQuickEntry from './features/capture/DailyQuickEntry'
@@ -25,47 +25,15 @@ import RecapCard from './features/recap/RecapCard'
 import HoldToShredButton from './features/ritual/HoldToShredButton'
 import RitualCanvas from './features/ritual/RitualCanvas'
 import { useEmotionApi } from './hooks/useEmotionApi'
-import { getEmotionDefinitionByTag } from '../../shared/emotionMeta'
+import {
+  getEmotionDefinitionByTag,
+  ritualEffectValues,
+  getRitualEffectDefinition,
+  type RitualEffect
+} from '../../shared/emotionMeta'
 import { getTimeContextLabel } from '../../shared/emotionAnalysis'
 
 type AppPage = 'release' | 'analytics' | 'history' | 'garden' | 'achievements'
-
-const ritualEffectOptions: Array<{
-  value: RitualEffect
-  label: string
-  subtitle: string
-  description: string
-  recommendedTags: string[]
-}> = [
-  {
-    value: 'burst',
-    label: '爆散',
-    subtitle: '横向扩散 / 中等旋转',
-    description: '像素碎块会向四周炸开，适合把一股憋着的情绪瞬间抛出去。',
-    recommendedTags: ['愤怒', '崩溃']
-  },
-  {
-    value: 'fall',
-    label: '坠落',
-    subtitle: '强重力 / 低横移',
-    description: '文字会像失去支撑一样整块下沉，适合疲惫、麻木和放空状态。',
-    recommendedTags: ['疲惫', '平静']
-  },
-  {
-    value: 'glitch',
-    label: '故障',
-    subtitle: '错位闪断 / 抽动偏移',
-    description: '碎片会出现短促错位和信号跳变，更像情绪在脑海里持续抖动。',
-    recommendedTags: ['焦虑', '崩溃']
-  },
-  {
-    value: 'ash',
-    label: '灰化',
-    subtitle: '失色飘散 / 缓慢退场',
-    description: '文字会逐渐失去颜色并化成灰烬向上漂散，适合释然和慢慢放下。',
-    recommendedTags: ['释然', '平静']
-  }
-]
 
 const appPages: Array<{
   value: AppPage
@@ -121,7 +89,7 @@ function App(): React.JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [statusText, setStatusText] = useState('把想扔掉的内容输入进来，然后长按底部按钮。')
   const [particleState, setParticleState] = useState<'idle' | 'burst'>('idle')
-  const [effectType, setEffectType] = useState<RitualEffect>('burst')
+  const [currentEffect, setCurrentEffect] = useState<RitualEffect>('burst')
   const [activePage, setActivePage] = useState<AppPage>('release')
   const [statsSummary, setStatsSummary] = useState<EmotionStatsSummary | null>(null)
   const [growthSnapshot, setGrowthSnapshot] = useState<GardenGrowthSnapshot | null>(null)
@@ -131,7 +99,11 @@ function App(): React.JSX.Element {
   const [emotionFilter, setEmotionFilter] = useState<EmotionTag[]>([])
   const [isDashboardLoading, setIsDashboardLoading] = useState(true)
   const [achievementSummary, setAchievementSummary] = useState<AchievementSummary | null>(null)
-  const [recapData, setRecapData] = useState<{ emotionTag: EmotionTag; intensity: EmotionIntensity } | null>(null)
+  const [recapData, setRecapData] = useState<{
+    emotionTag: EmotionTag
+    intensity: EmotionIntensity
+    rarity: FlowerRarity
+  } | null>(null)
   const [achievementToasts, setAchievementToasts] = useState<ToastItem[]>([])
   const [showQuickEntry, setShowQuickEntry] = useState(false)
   const seenUnlockedIdsRef = useRef<Set<string>>(new Set())
@@ -213,13 +185,14 @@ function App(): React.JSX.Element {
       setIsDashboardLoading(true)
 
       try {
-        const [nextGarden, nextStats, nextGrowth, nextCalendar, nextAchievements] = await Promise.all([
-          options.nextGarden ? Promise.resolve(options.nextGarden) : listGarden(),
-          getEmotionStats(7),
-          getGardenGrowth(),
-          listEmotionCalendar(30, emotionFilter),
-          getAchievements()
-        ])
+        const [nextGarden, nextStats, nextGrowth, nextCalendar, nextAchievements] =
+          await Promise.all([
+            options.nextGarden ? Promise.resolve(options.nextGarden) : listGarden(),
+            getEmotionStats(7),
+            getGardenGrowth(),
+            listEmotionCalendar(30, emotionFilter),
+            getAchievements()
+          ])
 
         if (requestId !== refreshRequestIdRef.current) {
           return
@@ -346,11 +319,9 @@ function App(): React.JSX.Element {
     return isSubmitting || inputValue.trim().length === 0 || !draftAnalysis
   }, [draftAnalysis, inputValue, isSubmitting])
 
-  const activeEffect = useMemo(() => {
-    return (
-      ritualEffectOptions.find((option) => option.value === effectType) ?? ritualEffectOptions[0]
-    )
-  }, [effectType])
+  const activeEffectLabel = useMemo(() => {
+    return getRitualEffectDefinition(currentEffect).label
+  }, [currentEffect])
 
   const timelineHeadline = useMemo(() => {
     if (!selectedDate) {
@@ -415,7 +386,8 @@ function App(): React.JSX.Element {
       const nextGarden = await releaseEmotion(quickInput)
       setGardenItems(nextGarden)
       await refreshAllPanels({ nextGarden, preferSelectedDate: true })
-      setRecapData({ emotionTag, intensity: 'mild' })
+      const newFlower = nextGarden[0]
+      setRecapData({ emotionTag, intensity: 'mild', rarity: newFlower?.rarity ?? 'common' })
     } catch (error) {
       console.error(error)
       setStatusText('快捷释放没有成功，请稍后再试。')
@@ -428,11 +400,8 @@ function App(): React.JSX.Element {
       return
     }
 
-    const pendingRecap = {
-      emotionTag: draftAnalysis.emotionTag,
-      intensity: draftAnalysis.analysis.emotionIntensity
-    }
-
+    const randomEffect = ritualEffectValues[Math.floor(Math.random() * ritualEffectValues.length)]
+    setCurrentEffect(randomEffect)
     setIsSubmitting(true)
     setRitualText(trimmedInput)
     setParticleState('burst')
@@ -441,6 +410,12 @@ function App(): React.JSX.Element {
 
     try {
       const nextGarden = await releaseEmotion(draftAnalysis)
+      const newFlower = nextGarden[0]
+      const pendingRecap = {
+        emotionTag: draftAnalysis.emotionTag,
+        intensity: draftAnalysis.analysis.emotionIntensity,
+        rarity: newFlower?.rarity ?? 'common'
+      }
       setGardenItems(nextGarden)
       setInputValue('')
       setDraftAnalysis(null)
@@ -489,12 +464,33 @@ function App(): React.JSX.Element {
     >
       <header className="game-hud flex-wrap justify-between">
         <div className="flex items-center gap-4">
-          <span className="text-[11px] font-bold" style={{ background: 'linear-gradient(90deg, #e91e63, #7b1fa2, #0277bd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>EMO-TRASH</span>
-          <span className="game-hud-stat">花朵 <span className="game-hud-stat-value">{gardenItems.length}</span></span>
-          <span className="game-hud-stat">连续 <span className="game-hud-stat-value">{growthSnapshot?.currentStreakDays ?? 0}天</span></span>
-          <span className="game-hud-stat">浇水 <span className="game-hud-stat-value">{growthSnapshot?.manualWateringsRemaining ?? 1}/1</span></span>
+          <span
+            className="text-[11px] font-bold"
+            style={{
+              background: 'linear-gradient(90deg, #e91e63, #7b1fa2, #0277bd)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}
+          >
+            EMO-TRASH
+          </span>
+          <span className="game-hud-stat">
+            花朵 <span className="game-hud-stat-value">{gardenItems.length}</span>
+          </span>
+          <span className="game-hud-stat">
+            连续{' '}
+            <span className="game-hud-stat-value">{growthSnapshot?.currentStreakDays ?? 0}天</span>
+          </span>
+          <span className="game-hud-stat">
+            浇水{' '}
+            <span className="game-hud-stat-value">
+              {growthSnapshot?.manualWateringsRemaining ?? 1}/1
+            </span>
+          </span>
         </div>
-        <span className="text-[10px] text-[var(--text-muted)]">{growthSnapshot?.seasonalTheme?.combinedLabel ?? '新芽季'}</span>
+        <span className="text-[10px] text-[var(--text-muted)]">
+          {growthSnapshot?.seasonalTheme?.combinedLabel ?? '新芽季'}
+        </span>
       </header>
 
       <nav className="game-nav">
@@ -520,24 +516,40 @@ function App(): React.JSX.Element {
         <section className="grid flex-1 gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="pixel-panel pixel-panel--rose flex flex-col p-5">
             <div className="mb-4 flex items-center justify-between border-b-3 border-dashed border-[#e91e63]/30 pb-3">
-              <h2 className="text-sm font-bold tracking-widest text-[var(--accent-rose)]">▼ 情绪垃圾桶</h2>
+              <h2 className="text-sm font-bold tracking-widest text-[var(--accent-rose)]">
+                ▼ 情绪垃圾桶
+              </h2>
               <span className="text-[10px] text-[var(--text-muted)]">{statusText}</span>
             </div>
 
             <div className="flex flex-1 flex-col gap-4">
               <CaptureInput value={inputValue} disabled={isSubmitting} onChange={setInputValue} />
-              <div className="border-3 border-[#00838f] bg-[var(--accent-cyan-soft)] p-3" style={{ borderRadius: '4px' }}>
+              <div
+                className="border-3 border-[#00838f] bg-[var(--accent-cyan-soft)] p-3"
+                style={{ borderRadius: '4px' }}
+              >
                 <div className="flex items-center justify-between gap-3 border-b-3 border-dashed border-[#00838f]/30 pb-2">
-                  <h3 className="text-[11px] font-bold tracking-widest text-[var(--accent-cyan)]">▼ AI 情绪识别</h3>
-                  <span className="border-2 border-[var(--accent-purple)] bg-[var(--accent-purple-soft)] px-2 py-0.5 text-[9px] text-[var(--accent-purple)]" style={{ borderRadius: '2px' }}>
-                    {isAnalyzing ? '识别中…' : analysisSummary ? analysisSummary.sourceLabel : '待输入'}
+                  <h3 className="text-[11px] font-bold tracking-widest text-[var(--accent-cyan)]">
+                    ▼ AI 情绪识别
+                  </h3>
+                  <span
+                    className="border-2 border-[var(--accent-purple)] bg-[var(--accent-purple-soft)] px-2 py-0.5 text-[9px] text-[var(--accent-purple)]"
+                    style={{ borderRadius: '2px' }}
+                  >
+                    {isAnalyzing
+                      ? '识别中…'
+                      : analysisSummary
+                        ? analysisSummary.sourceLabel
+                        : '待输入'}
                   </span>
                 </div>
                 {analysisSummary ? (
                   <div className="mt-4 space-y-4">
                     <div className="grid gap-3 md:grid-cols-2">
                       <div className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] px-3 py-3">
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">主情绪</p>
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                          主情绪
+                        </p>
                         <p className="mt-2 text-base font-semibold text-[var(--text-primary)]">
                           {analysisSummary.emotionTag} · {analysisSummary.intensityLabel}
                         </p>
@@ -546,22 +558,35 @@ function App(): React.JSX.Element {
                         </p>
                       </div>
                       <div className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] px-3 py-3">
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">触发场景</p>
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                          触发场景
+                        </p>
                         <p className="mt-2 text-base font-semibold text-[var(--text-primary)]">
                           {analysisSummary.triggerScene}
                         </p>
-                        <p className="mt-1 text-xs text-[var(--text-secondary)]">自动结合输入与时间语境生成</p>
+                        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                          自动结合输入与时间语境生成
+                        </p>
                       </div>
                     </div>
                     <div className="rounded-[4px] border-2 border-[var(--accent-rose)] bg-[var(--accent-rose-soft)] px-3 py-3">
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-rose)]">引导问题</p>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-rose)]">
+                        引导问题
+                      </p>
                       <p className="mt-2 text-sm leading-6 text-[var(--text-primary)]">
                         {analysisSummary.guidanceQuestion}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {analysisSummary.suggestedLabels.map((label, idx) => {
-                        const tagColors = ['#e91e63', '#7b1fa2', '#0277bd', '#2e7d32', '#e65100', '#00838f']
+                        const tagColors = [
+                          '#e91e63',
+                          '#7b1fa2',
+                          '#0277bd',
+                          '#2e7d32',
+                          '#e65100',
+                          '#00838f'
+                        ]
                         const color = tagColors[idx % tagColors.length]
                         return (
                           <span
@@ -587,61 +612,38 @@ function App(): React.JSX.Element {
 
           <div className="pixel-panel pixel-panel--amber flex flex-col gap-4 p-5">
             <div className="border-b-3 border-dashed border-[#e65100]/30 pb-3">
-              <h2 className="text-sm font-bold tracking-widest text-[var(--accent-amber)]">▼ 粉碎仪式</h2>
-              <p className="mt-1 text-[10px] text-[var(--text-muted)]">选择特效后长按提交</p>
+              <h2 className="text-sm font-bold tracking-widest text-[var(--accent-amber)]">
+                ▼ 粉碎仪式
+              </h2>
+              <p className="mt-1 text-[10px] text-[var(--text-muted)]">长按提交后随机触发特效</p>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {ritualEffectOptions.map((option) => {
-                const selected = option.value === effectType
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    data-effect-option={option.value}
-                    data-selected={selected ? 'true' : 'false'}
-                    onClick={() => setEffectType(option.value)}
-                    className="pixel-btn text-left"
-                    style={{
-                      background: selected ? 'var(--accent-amber-soft)' : 'var(--bg-surface)',
-                      borderColor: selected ? 'var(--accent-amber)' : 'var(--border-primary)',
-                      color: selected ? 'var(--accent-amber)' : 'var(--text-secondary)'
-                    }}
-                  >
-                    <span className="block text-[11px] font-bold">[{option.label}]</span>
-                    <span className="mt-0.5 block text-[9px] text-[var(--text-muted)]">{option.subtitle}</span>
-                  </button>
-                )
-              })}
-            </div>
-            <div className="border-3 border-[var(--border-primary)] bg-[var(--bg-surface)] p-3" style={{ borderRadius: '4px' }}>
-              <p className="text-[10px] text-[var(--accent-amber)]">▸ {activeEffect.label}</p>
-              <p className="mt-1 text-[10px] leading-5 text-[var(--text-secondary)]">{activeEffect.description}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {activeEffect.recommendedTags.map((tag, idx) => {
-                  const tagColors = ['#e91e63', '#e65100', '#7b1fa2', '#0277bd']
-                  const color = tagColors[idx % tagColors.length]
-                  return (
-                    <span
-                      key={tag}
-                      className="border-2 px-1.5 py-0.5 text-[9px]"
-                      style={{ borderRadius: '2px', borderColor: color, color, background: `${color}11` }}
-                    >
-                      {tag}
-                    </span>
-                  )
-                })}
+            {ritualActive && (
+              <div
+                className="flex items-center gap-2 border-2 border-[var(--accent-amber)] bg-[var(--accent-amber-soft)] px-3 py-2"
+                style={{ borderRadius: '4px' }}
+              >
+                <span className="text-[10px] text-[var(--accent-amber)]">▸ 当前特效</span>
+                <span className="text-[11px] font-bold text-[var(--accent-amber)]">
+                  [{activeEffectLabel}]
+                </span>
               </div>
-            </div>
+            )}
             <RitualCanvas
               text={ritualActive ? ritualText : inputValue}
               active={ritualActive}
               particleState={particleState}
-              effectType={effectType}
+              effectType={currentEffect}
             />
             <p className="text-center text-[10px] leading-5 text-[var(--text-muted)]">
               ※ 仅提取张力特征，不存原文
             </p>
-            <GardenView items={previewGardenItems} growthSnapshot={growthSnapshot} onWaterFlower={handleWaterFlower} onPickFlower={handlePickFlower} wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0} />
+            <GardenView
+              items={previewGardenItems}
+              growthSnapshot={growthSnapshot}
+              onWaterFlower={handleWaterFlower}
+              onPickFlower={handlePickFlower}
+              wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0}
+            />
           </div>
 
           {!ritualActive && recapData && (
@@ -649,6 +651,7 @@ function App(): React.JSX.Element {
               <RecapCard
                 emotionTag={recapData.emotionTag}
                 intensity={recapData.intensity}
+                rarity={recapData.rarity}
                 currentStreak={growthSnapshot?.currentStreakDays ?? 0}
                 onDismiss={() => setRecapData(null)}
               />
@@ -660,11 +663,15 @@ function App(): React.JSX.Element {
       {activePage === 'analytics' ? (
         <section className="grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
           <div className="pixel-panel pixel-panel--sky p-5">
-            <h2 className="mb-3 border-b-3 border-dashed border-[#0277bd]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-sky)]">▼ 情绪统计</h2>
+            <h2 className="mb-3 border-b-3 border-dashed border-[#0277bd]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-sky)]">
+              ▼ 情绪统计
+            </h2>
             <EmotionStatsPanel summary={statsSummary} loading={isDashboardLoading} />
           </div>
           <div className="pixel-panel pixel-panel--emerald p-5">
-            <h2 className="mb-3 border-b-3 border-dashed border-[#2e7d32]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-emerald)]">▼ 花园成长</h2>
+            <h2 className="mb-3 border-b-3 border-dashed border-[#2e7d32]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-emerald)]">
+              ▼ 花园成长
+            </h2>
             <GardenGrowthPanel snapshot={growthSnapshot} loading={isDashboardLoading} />
           </div>
         </section>
@@ -672,7 +679,9 @@ function App(): React.JSX.Element {
 
       {activePage === 'history' ? (
         <section className="pixel-panel pixel-panel--purple flex flex-col gap-4 p-5">
-          <h2 className="border-b-3 border-dashed border-[#7b1fa2]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-purple)]">▼ 情绪历史</h2>
+          <h2 className="border-b-3 border-dashed border-[#7b1fa2]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-purple)]">
+            ▼ 情绪历史
+          </h2>
           <EmotionFilterBar
             selectedTags={emotionFilter}
             onChange={(nextTags) => {
@@ -690,7 +699,9 @@ function App(): React.JSX.Element {
           />
           <div className="space-y-2 border-t-3 border-dashed border-[var(--border-primary)] pt-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold tracking-widest text-[var(--accent-purple)]">▸ {timelineHeadline}</h3>
+              <h3 className="text-xs font-bold tracking-widest text-[var(--accent-purple)]">
+                ▸ {timelineHeadline}
+              </h3>
               <span className="text-[10px] text-[var(--text-muted)]">按情绪筛选</span>
             </div>
             <EmotionTimeline items={timelineItems} selectedDate={selectedDate} />
@@ -701,12 +712,22 @@ function App(): React.JSX.Element {
       {activePage === 'garden' ? (
         <section className="grid gap-4 xl:grid-cols-[0.84fr_1.16fr]">
           <div className="pixel-panel pixel-panel--emerald p-5">
-            <h2 className="mb-3 border-b-3 border-dashed border-[#2e7d32]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-emerald)]">▼ 花园状态</h2>
+            <h2 className="mb-3 border-b-3 border-dashed border-[#2e7d32]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-emerald)]">
+              ▼ 花园状态
+            </h2>
             <GardenGrowthPanel snapshot={growthSnapshot} loading={isDashboardLoading} />
           </div>
           <div className="pixel-panel pixel-panel--cyan p-5">
-            <h2 className="mb-3 border-b-3 border-dashed border-[#00838f]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-cyan)]">▼ 像素花园</h2>
-            <GardenView items={gardenItems} growthSnapshot={growthSnapshot} onWaterFlower={handleWaterFlower} onPickFlower={handlePickFlower} wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0} />
+            <h2 className="mb-3 border-b-3 border-dashed border-[#00838f]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-cyan)]">
+              ▼ 像素花园
+            </h2>
+            <GardenView
+              items={gardenItems}
+              growthSnapshot={growthSnapshot}
+              onWaterFlower={handleWaterFlower}
+              onPickFlower={handlePickFlower}
+              wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0}
+            />
           </div>
         </section>
       ) : null}

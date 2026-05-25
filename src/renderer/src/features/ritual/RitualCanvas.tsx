@@ -19,6 +19,10 @@ interface Shard {
   jitterX: number
   jitterY: number
   fadeRate: number
+  scaleDecay: number
+  age: number
+  originX: number
+  originY: number
 }
 
 interface AlphaBounds {
@@ -219,19 +223,27 @@ function createShardMotion(
       return {
         velocityX: normalizedX * 0.018 * scatterGain + (Math.random() - 0.5) * 0.45,
         velocityY: Math.abs(normalizedY) * 0.01 - Math.random() * 0.8,
-        rotationSpeed: (Math.random() - 0.5) * 0.025,
+        rotationSpeed: (Math.random() - 0.5) * 0.04,
         jitterX: 0,
         jitterY: 0,
-        fadeRate: 0.0022
+        fadeRate: 0.0018,
+        scaleDecay: 0.003,
+        age: 0,
+        originX: 0,
+        originY: 0
       }
     case 'glitch':
       return {
         velocityX: normalizedX * 0.012 + (Math.random() - 0.5) * 0.3,
         velocityY: normalizedY * 0.004 - Math.random() * 0.15,
         rotationSpeed: (Math.random() - 0.5) * 0.01,
-        jitterX: 1.2 + Math.random() * 1.6,
-        jitterY: 0.25,
-        fadeRate: 0.0044
+        jitterX: 1.8 + Math.random() * 2.4,
+        jitterY: 0.4,
+        fadeRate: 0.0038,
+        scaleDecay: 0.001,
+        age: 0,
+        originX: 0,
+        originY: 0
       }
     case 'ash':
       return {
@@ -240,7 +252,37 @@ function createShardMotion(
         rotationSpeed: (Math.random() - 0.5) * 0.02,
         jitterX: 0.15,
         jitterY: 0.1,
-        fadeRate: 0.005
+        fadeRate: 0.004,
+        scaleDecay: 0.004,
+        age: 0,
+        originX: 0,
+        originY: 0
+      }
+    case 'vortex':
+      return {
+        velocityX: normalizedX * 0.008,
+        velocityY: normalizedY * 0.008,
+        rotationSpeed: (Math.random() > 0.5 ? 1 : -1) * (0.06 + Math.random() * 0.04),
+        jitterX: 0,
+        jitterY: 0,
+        fadeRate: 0.003,
+        scaleDecay: 0.002,
+        age: 0,
+        originX: 0,
+        originY: 0
+      }
+    case 'dissolve':
+      return {
+        velocityX: (Math.random() - 0.5) * 0.3,
+        velocityY: 0.2 + Math.random() * 0.4,
+        rotationSpeed: (Math.random() - 0.5) * 0.015,
+        jitterX: 0.8 + Math.random() * 0.6,
+        jitterY: 0,
+        fadeRate: 0.006,
+        scaleDecay: 0.008,
+        age: 0,
+        originX: 0,
+        originY: 0
       }
     case 'burst':
     default:
@@ -251,7 +293,11 @@ function createShardMotion(
         rotationSpeed: (Math.random() - 0.5) * (0.07 + densityFactor * 0.02),
         jitterX: 0,
         jitterY: 0,
-        fadeRate: 0.0032
+        fadeRate: 0.0028,
+        scaleDecay: 0.005,
+        age: 0,
+        originX: 0,
+        originY: 0
       }
   }
 }
@@ -496,9 +542,13 @@ function RitualCanvas({
       const normalizedX = safeRect.x + safeRect.width / 2 - centerX
       const normalizedY = safeRect.y + safeRect.height / 2 - centerY
       const motion = createShardMotion(effectType, normalizedX, normalizedY, densityFactor)
+      motion.originX = shardSprite.x
+      motion.originY = shardSprite.y
 
       if (effectType === 'ash') {
         shardSprite.tint = 0xd6a46b
+      } else if (effectType === 'dissolve') {
+        shardSprite.tint = 0xaabbcc
       }
 
       shardsRef.current.push({
@@ -513,39 +563,107 @@ function RitualCanvas({
 
     const ticker = (time: { deltaTime: number }): void => {
       shardsRef.current.forEach((shard, index) => {
+        shard.age += time.deltaTime
+
         switch (effectType) {
           case 'fall':
-            shard.velocityY += 0.28 * time.deltaTime
+            shard.velocityY += 0.32 * time.deltaTime
+            shard.rotationSpeed += 0.001 * time.deltaTime
             shard.sprite.x = Math.round(shard.sprite.x + shard.velocityX * time.deltaTime)
             shard.sprite.y = Math.round(shard.sprite.y + shard.velocityY * time.deltaTime)
             shard.sprite.rotation += shard.rotationSpeed * time.deltaTime
+            shard.sprite.scale.set(
+              Math.max(0.2, shard.sprite.scale.x - shard.scaleDecay * time.deltaTime)
+            )
             break
           case 'glitch':
             shard.sprite.x = Math.round(
               shard.sprite.x +
                 shard.velocityX * time.deltaTime +
-                Math.sin(index + time.deltaTime) * shard.jitterX
+                Math.sin(shard.age * 0.3 + index) * shard.jitterX
             )
-            shard.sprite.y = Math.round(shard.sprite.y + shard.velocityY * time.deltaTime)
-            if (Math.random() > 0.7) {
+            shard.sprite.y = Math.round(
+              shard.sprite.y +
+                shard.velocityY * time.deltaTime +
+                Math.cos(shard.age * 0.5 + index * 0.7) * shard.jitterY
+            )
+            if (Math.random() > 0.6) {
               shard.sprite.alpha = Math.max(
-                0.2,
-                shard.sprite.alpha - shard.fadeRate * 3 * time.deltaTime
+                0.15,
+                shard.sprite.alpha - shard.fadeRate * 4 * time.deltaTime
               )
+              const tints = [0xff3366, 0x33ffcc, 0x3366ff, 0xffff33]
+              shard.sprite.tint = tints[Math.floor(Math.random() * tints.length)]
+            }
+            if (Math.random() > 0.85) {
+              shard.sprite.x += (Math.random() - 0.5) * 8
             }
             break
           case 'ash':
-            shard.velocityY -= 0.02 * time.deltaTime
+            shard.velocityY -= 0.025 * time.deltaTime
+            shard.velocityX += Math.sin(shard.age * 0.05 + index) * 0.01
             shard.sprite.x = Math.round(shard.sprite.x + shard.velocityX * time.deltaTime)
             shard.sprite.y = Math.round(shard.sprite.y + shard.velocityY * time.deltaTime)
             shard.sprite.rotation += shard.rotationSpeed * time.deltaTime
+            shard.sprite.scale.set(
+              Math.max(0.1, shard.sprite.scale.x - shard.scaleDecay * time.deltaTime)
+            )
+            if (shard.age > 15) {
+              shard.sprite.tint = 0x888888
+            }
+            break
+          case 'vortex': {
+            const phase1Duration = 28
+            if (shard.age < phase1Duration) {
+              const progress = shard.age / phase1Duration
+              const angle = progress * Math.PI * 3 + index * 0.4
+              const radius = (1 - progress) * 60
+              shard.sprite.x = Math.round(shard.originX + Math.cos(angle) * radius * (1 - progress))
+              shard.sprite.y = Math.round(shard.originY + Math.sin(angle) * radius * (1 - progress))
+              shard.sprite.rotation += shard.rotationSpeed * time.deltaTime * 2
+              shard.sprite.scale.set(Math.max(0.4, 1 - progress * 0.5))
+            } else {
+              const burstAge = shard.age - phase1Duration
+              const burstAngle = index * 0.618 * Math.PI * 2
+              const burstSpeed = 2.5 + Math.random() * 1.5
+              shard.sprite.x = Math.round(
+                shard.sprite.x + Math.cos(burstAngle) * burstSpeed * time.deltaTime
+              )
+              shard.sprite.y = Math.round(
+                shard.sprite.y +
+                  Math.sin(burstAngle) * burstSpeed * time.deltaTime +
+                  burstAge * 0.08
+              )
+              shard.sprite.rotation += shard.rotationSpeed * time.deltaTime * 3
+              shard.sprite.scale.set(Math.max(0, shard.sprite.scale.x - 0.012 * time.deltaTime))
+            }
+            break
+          }
+          case 'dissolve':
+            shard.velocityY += 0.06 * time.deltaTime
+            shard.sprite.x = Math.round(
+              shard.sprite.x +
+                shard.velocityX * time.deltaTime +
+                Math.sin(shard.age * 0.08 + index * 1.2) * shard.jitterX * 0.5
+            )
+            shard.sprite.y = Math.round(shard.sprite.y + shard.velocityY * time.deltaTime)
+            shard.sprite.rotation += shard.rotationSpeed * time.deltaTime
+            shard.sprite.scale.set(
+              Math.max(0, shard.sprite.scale.x - shard.scaleDecay * time.deltaTime)
+            )
+            if (shard.age > 10) {
+              shard.sprite.tint = 0x667788
+            }
             break
           case 'burst':
           default:
-            shard.velocityY += 0.22 * time.deltaTime
+            shard.velocityY += 0.24 * time.deltaTime
             shard.sprite.x = Math.round(shard.sprite.x + shard.velocityX * time.deltaTime)
             shard.sprite.y = Math.round(shard.sprite.y + shard.velocityY * time.deltaTime)
             shard.sprite.rotation += shard.rotationSpeed * time.deltaTime
+            shard.sprite.scale.set(
+              Math.max(0.3, shard.sprite.scale.x - shard.scaleDecay * time.deltaTime)
+            )
             break
         }
 
@@ -577,7 +695,7 @@ function RitualCanvas({
   return (
     <div
       ref={hostRef}
-      className="h-64 w-full rounded-3xl border border-white/10 bg-black/20"
+      className={`ritual-canvas h-64 w-full rounded-3xl border bg-black/20 ${active ? 'ritual-canvas--active border-[var(--accent-rose)]/40' : 'border-white/10'}`}
       data-effect-type={effectType}
       data-particle-state={particleState}
       data-shard-count={active ? String(shardCount) : '0'}

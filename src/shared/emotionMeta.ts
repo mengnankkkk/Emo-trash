@@ -7,7 +7,7 @@ export const emotionTagValues = [
   'relief'
 ] as const
 
-export const ritualEffectValues = ['burst', 'fall', 'glitch', 'ash'] as const
+export const ritualEffectValues = ['burst', 'fall', 'glitch', 'ash', 'vortex', 'dissolve'] as const
 
 export type EmotionTag = (typeof emotionTagValues)[number]
 export type RitualEffect = (typeof ritualEffectValues)[number]
@@ -74,7 +74,9 @@ export const ritualEffectDefinitions: RitualEffectDefinition[] = [
   { value: 'burst', label: '爆散' },
   { value: 'fall', label: '坠落' },
   { value: 'glitch', label: '故障' },
-  { value: 'ash', label: '灰化' }
+  { value: 'ash', label: '灰化' },
+  { value: 'vortex', label: '漩涡' },
+  { value: 'dissolve', label: '溶解' }
 ]
 
 export function getEmotionDefinitionByTag(emotionTag: EmotionTag): EmotionDefinition {
