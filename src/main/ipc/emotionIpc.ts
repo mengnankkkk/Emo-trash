@@ -63,6 +63,14 @@ export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): vo
     return releaseService.getAchievements()
   })
 
+  ipcMain.handle(emoTrashChannels.getFlowerDex, () => {
+    return releaseService.getFlowerDex()
+  })
+
+  ipcMain.handle(emoTrashChannels.getTitles, () => {
+    return releaseService.getTitles()
+  })
+
   ipcMain.handle(emoTrashChannels.listEmotionCalendar, (_event, payload) => {
     const rangeDays = Math.max(1, Math.min(365, Number(payload?.rangeDays ?? 30)))
     const emotionTags = Array.isArray(payload?.emotionTags)

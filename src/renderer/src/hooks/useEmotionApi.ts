@@ -4,11 +4,13 @@ import type {
   EmotionStatsRange,
   EmotionTag,
   EmotionTimelineQuery,
+  FlowerDexSummary,
   GardenGrowthSnapshot,
   GardenItem,
   EmotionCalendarDay,
   EmotionStatsSummary,
   EmotionTimelineEntry,
+  TitleSummary,
   WaterFlowerResult,
   PickFlowerResult,
   AchievementSummary
@@ -25,6 +27,8 @@ export function useEmotionApi(): {
   getEmotionStats: (rangeDays: EmotionStatsRange) => Promise<EmotionStatsSummary>
   getGardenGrowth: () => Promise<GardenGrowthSnapshot>
   getAchievements: () => Promise<AchievementSummary>
+  getFlowerDex: () => Promise<FlowerDexSummary>
+  getTitles: () => Promise<TitleSummary>
   listEmotionCalendar: (
     rangeDays: number,
     emotionTags?: EmotionTag[]
@@ -70,6 +74,14 @@ export function useEmotionApi(): {
     return getRuntimeApi().getAchievements()
   }, [])
 
+  const getFlowerDex = useCallback(() => {
+    return getRuntimeApi().getFlowerDex()
+  }, [])
+
+  const getTitles = useCallback(() => {
+    return getRuntimeApi().getTitles()
+  }, [])
+
   const listEmotionCalendar = useCallback((rangeDays: number, emotionTags: EmotionTag[] = []) => {
     return getRuntimeApi().listEmotionCalendar(rangeDays, emotionTags)
   }, [])
@@ -87,6 +99,8 @@ export function useEmotionApi(): {
     getEmotionStats,
     getGardenGrowth,
     getAchievements,
+    getFlowerDex,
+    getTitles,
     listEmotionCalendar,
     listEmotionTimeline
   }

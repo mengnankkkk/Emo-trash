@@ -6,21 +6,25 @@ import type {
   EmotionStatsSummary,
   EmotionTag,
   EmotionTimelineEntry,
+  FlowerDexSummary,
   FlowerRarity,
   GardenGrowthSnapshot,
   GardenItem,
-  ReleaseEmotionInput
+  ReleaseEmotionInput,
+  TitleSummary
 } from './types/emotion'
 import CaptureInput from './features/capture/CaptureInput'
 import DailyQuickEntry from './features/capture/DailyQuickEntry'
 import EmotionStatsPanel from './features/analytics/EmotionStatsPanel'
 import GardenGrowthPanel from './features/garden/GardenGrowthPanel'
 import GardenView from './features/garden/GardenView'
+import GardenWeather from './features/garden/GardenWeather'
 import EmotionCalendarHeatmap from './features/history/EmotionCalendarHeatmap'
 import EmotionFilterBar from './features/history/EmotionFilterBar'
 import EmotionTimeline from './features/history/EmotionTimeline'
 import AchievementsPage from './features/achievements/AchievementsPage'
 import AchievementToast, { type ToastItem } from './features/achievements/AchievementToast'
+import FlowerDexPage from './features/flowerdex/FlowerDexPage'
 import RecapCard from './features/recap/RecapCard'
 import HoldToShredButton from './features/ritual/HoldToShredButton'
 import RitualCanvas from './features/ritual/RitualCanvas'
@@ -32,8 +36,9 @@ import {
   type RitualEffect
 } from '../../shared/emotionMeta'
 import { getTimeContextLabel } from '../../shared/emotionAnalysis'
+import { computeEmotionWeather } from '../../shared/emotionWeather'
 
-type AppPage = 'release' | 'analytics' | 'history' | 'garden' | 'achievements'
+type AppPage = 'release' | 'analytics' | 'history' | 'garden' | 'achievements' | 'flowerdex'
 
 const appPages: Array<{
   value: AppPage
@@ -76,6 +81,13 @@ const appPages: Array<{
     subtitle: '里程碑与解锁',
     summary: '查看释放节律的里程碑',
     indexLabel: '05'
+  },
+  {
+    value: 'flowerdex',
+    label: '图鉴',
+    subtitle: '花朵收藏册',
+    summary: '收集所有花朵变体',
+    indexLabel: '06'
   }
 ]
 
@@ -99,6 +111,8 @@ function App(): React.JSX.Element {
   const [emotionFilter, setEmotionFilter] = useState<EmotionTag[]>([])
   const [isDashboardLoading, setIsDashboardLoading] = useState(true)
   const [achievementSummary, setAchievementSummary] = useState<AchievementSummary | null>(null)
+  const [flowerDexSummary, setFlowerDexSummary] = useState<FlowerDexSummary | null>(null)
+  const [titleSummary, setTitleSummary] = useState<TitleSummary | null>(null)
   const [recapData, setRecapData] = useState<{
     emotionTag: EmotionTag
     intensity: EmotionIntensity
@@ -119,6 +133,8 @@ function App(): React.JSX.Element {
     getEmotionStats,
     getGardenGrowth,
     getAchievements,
+    getFlowerDex,
+    getTitles,
     listEmotionCalendar,
     listEmotionTimeline
   } = useEmotionApi()
@@ -185,14 +201,23 @@ function App(): React.JSX.Element {
       setIsDashboardLoading(true)
 
       try {
-        const [nextGarden, nextStats, nextGrowth, nextCalendar, nextAchievements] =
-          await Promise.all([
-            options.nextGarden ? Promise.resolve(options.nextGarden) : listGarden(),
-            getEmotionStats(7),
-            getGardenGrowth(),
-            listEmotionCalendar(30, emotionFilter),
-            getAchievements()
-          ])
+        const [
+          nextGarden,
+          nextStats,
+          nextGrowth,
+          nextCalendar,
+          nextAchievements,
+          nextFlowerDex,
+          nextTitles
+        ] = await Promise.all([
+          options.nextGarden ? Promise.resolve(options.nextGarden) : listGarden(),
+          getEmotionStats(7),
+          getGardenGrowth(),
+          listEmotionCalendar(30, emotionFilter),
+          getAchievements(),
+          getFlowerDex(),
+          getTitles()
+        ])
 
         if (requestId !== refreshRequestIdRef.current) {
           return
@@ -203,6 +228,8 @@ function App(): React.JSX.Element {
         setGrowthSnapshot(nextGrowth)
         setCalendarDays(nextCalendar)
         setAchievementSummary(nextAchievements)
+        setFlowerDexSummary(nextFlowerDex)
+        setTitleSummary(nextTitles)
 
         const newlyUnlocked = nextAchievements.recentlyUnlocked.filter(
           (a) => !seenUnlockedIdsRef.current.has(a.id)
@@ -246,7 +273,9 @@ function App(): React.JSX.Element {
       emotionFilter,
       getAchievements,
       getEmotionStats,
+      getFlowerDex,
       getGardenGrowth,
+      getTitles,
       listEmotionCalendar,
       listEmotionTimeline,
       listGarden,
@@ -334,6 +363,8 @@ function App(): React.JSX.Element {
   const previewGardenItems = useMemo(() => {
     return gardenItems.slice(0, 6)
   }, [gardenItems])
+
+  const currentWeather = useMemo(() => computeEmotionWeather(gardenItems), [gardenItems])
 
   const intensityLabelMap: Record<EmotionIntensity, string> = {
     mild: '轻微',
@@ -459,8 +490,9 @@ function App(): React.JSX.Element {
 
   return (
     <main
-      className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-4"
+      className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-4"
       data-calendar-season={growthSnapshot?.seasonalTheme?.calendarSeason ?? 'spring'}
+      data-weather={currentWeather.type}
     >
       <header className="game-hud flex-wrap justify-between">
         <div className="flex items-center gap-4">
@@ -488,9 +520,19 @@ function App(): React.JSX.Element {
             </span>
           </span>
         </div>
-        <span className="text-[10px] text-[var(--text-muted)]">
-          {growthSnapshot?.seasonalTheme?.combinedLabel ?? '新芽季'}
-        </span>
+        <div className="flex items-center gap-3">
+          {titleSummary?.activeTitle && (
+            <span
+              className="rounded-[2px] border-2 border-[var(--accent-amber)] bg-[color-mix(in_srgb,var(--accent-amber)_12%,var(--bg-panel))] px-2 py-0.5 text-[10px] font-bold tracking-[0.16em] text-[var(--accent-amber)]"
+              title={titleSummary.activeTitle.description}
+            >
+              ★ {titleSummary.activeTitle.label}
+            </span>
+          )}
+          <span className="text-[10px] text-[var(--text-muted)]">
+            {growthSnapshot?.seasonalTheme?.combinedLabel ?? '新芽季'}
+          </span>
+        </div>
       </header>
 
       <nav className="game-nav">
@@ -637,6 +679,7 @@ function App(): React.JSX.Element {
             <p className="text-center text-[10px] leading-5 text-[var(--text-muted)]">
               ※ 仅提取张力特征，不存原文
             </p>
+            <GardenWeather weatherType={currentWeather.type} label={currentWeather.label} />
             <GardenView
               items={previewGardenItems}
               growthSnapshot={growthSnapshot}
@@ -721,19 +764,30 @@ function App(): React.JSX.Element {
             <h2 className="mb-3 border-b-3 border-dashed border-[#00838f]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-cyan)]">
               ▼ 像素花园
             </h2>
-            <GardenView
-              items={gardenItems}
-              growthSnapshot={growthSnapshot}
-              onWaterFlower={handleWaterFlower}
-              onPickFlower={handlePickFlower}
-              wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0}
-            />
+            <div className="flex flex-col gap-3">
+              <GardenWeather weatherType={currentWeather.type} label={currentWeather.label} />
+              <GardenView
+                items={gardenItems}
+                growthSnapshot={growthSnapshot}
+                onWaterFlower={handleWaterFlower}
+                onPickFlower={handlePickFlower}
+                wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0}
+              />
+            </div>
           </div>
         </section>
       ) : null}
 
       {activePage === 'achievements' ? (
-        <AchievementsPage summary={achievementSummary} loading={isDashboardLoading} />
+        <AchievementsPage
+          summary={achievementSummary}
+          titleSummary={titleSummary}
+          loading={isDashboardLoading}
+        />
+      ) : null}
+
+      {activePage === 'flowerdex' ? (
+        <FlowerDexPage summary={flowerDexSummary} loading={isDashboardLoading} />
       ) : null}
 
       <AchievementToast

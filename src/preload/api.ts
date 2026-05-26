@@ -17,6 +17,8 @@ export const emoTrashChannels = {
   getEmotionStats: 'emotion:stats',
   getGardenGrowth: 'garden:growth',
   getAchievements: 'achievements:list',
+  getFlowerDex: 'flowerdex:list',
+  getTitles: 'titles:list',
   listEmotionCalendar: 'emotion:calendar',
   listEmotionTimeline: 'emotion:timeline'
 } as const
@@ -160,6 +162,32 @@ export const achievementSummarySchema = z.object({
   achievements: z.array(achievementStatusSchema)
 })
 
+export const flowerDexEntrySchema = z.object({
+  emotionTag: emotionTagSchema,
+  rarity: raritySchema,
+  unlocked: z.boolean(),
+  firstSeenAt: z.string().nullable(),
+  totalCount: z.number().int().nonnegative()
+})
+
+export const flowerDexSummarySchema = z.object({
+  totalSlots: z.number().int().positive(),
+  unlockedCount: z.number().int().nonnegative(),
+  entries: z.array(flowerDexEntrySchema)
+})
+
+export const titleStatusSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  description: z.string(),
+  unlocked: z.boolean()
+})
+
+export const titleSummarySchema = z.object({
+  activeTitle: titleStatusSchema.nullable(),
+  titles: z.array(titleStatusSchema)
+})
+
 export type EmotionTag = z.infer<typeof emotionTagSchema>
 export type FlowerRarity = z.infer<typeof raritySchema>
 export type EmotionAnalysisInput = z.infer<typeof emotionAnalysisInputSchema>
@@ -181,6 +209,10 @@ export type ShakeWindowInput = z.infer<typeof shakeWindowInputSchema>
 export type AchievementCategory = z.infer<typeof achievementCategorySchema>
 export type AchievementStatus = z.infer<typeof achievementStatusSchema>
 export type AchievementSummary = z.infer<typeof achievementSummarySchema>
+export type FlowerDexEntry = z.infer<typeof flowerDexEntrySchema>
+export type FlowerDexSummary = z.infer<typeof flowerDexSummarySchema>
+export type TitleStatus = z.infer<typeof titleStatusSchema>
+export type TitleSummary = z.infer<typeof titleSummarySchema>
 
 export interface EmoTrashApi {
   analyzeEmotion(input: EmotionAnalysisInput): Promise<ReleaseEmotionInput>
@@ -191,6 +223,8 @@ export interface EmoTrashApi {
   getEmotionStats(rangeDays: EmotionStatsRange): Promise<EmotionStatsSummary>
   getGardenGrowth(): Promise<GardenGrowthSnapshot>
   getAchievements(): Promise<AchievementSummary>
+  getFlowerDex(): Promise<FlowerDexSummary>
+  getTitles(): Promise<TitleSummary>
   listEmotionCalendar(rangeDays: number, emotionTags?: EmotionTag[]): Promise<EmotionCalendarDay[]>
   listEmotionTimeline(query?: Partial<EmotionTimelineQuery>): Promise<EmotionTimelineEntry[]>
   triggerShake(input?: Partial<ShakeWindowInput>): Promise<void>

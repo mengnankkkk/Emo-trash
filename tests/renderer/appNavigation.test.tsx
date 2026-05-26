@@ -135,6 +135,15 @@ vi.mock('../../src/renderer/src/hooks/useEmotionApi', () => ({
       achievements: []
     }),
     getGardenGrowth: vi.fn().mockResolvedValue(growthSnapshot),
+    getFlowerDex: vi.fn().mockResolvedValue({
+      totalSlots: 24,
+      unlockedCount: 1,
+      entries: []
+    }),
+    getTitles: vi.fn().mockResolvedValue({
+      activeTitle: null,
+      titles: []
+    }),
     listEmotionCalendar: vi.fn().mockResolvedValue(calendarDays),
     listEmotionTimeline: vi.fn().mockResolvedValue(timelineItems)
   })

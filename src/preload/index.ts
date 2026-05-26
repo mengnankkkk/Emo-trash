@@ -30,6 +30,12 @@ const api: EmoTrashApi = {
   getAchievements() {
     return ipcRenderer.invoke(emoTrashChannels.getAchievements)
   },
+  getFlowerDex() {
+    return ipcRenderer.invoke(emoTrashChannels.getFlowerDex)
+  },
+  getTitles() {
+    return ipcRenderer.invoke(emoTrashChannels.getTitles)
+  },
   getEmotionStats(rangeDays: EmotionStatsRange) {
     return ipcRenderer.invoke(emoTrashChannels.getEmotionStats, rangeDays)
   },

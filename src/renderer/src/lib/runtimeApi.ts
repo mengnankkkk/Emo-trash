@@ -22,6 +22,8 @@ import {
   toHour
 } from '../../../shared/emotionInsights'
 import { buildAchievementSummary } from '../../../shared/achievements'
+import { buildFlowerDexSummary } from '../../../shared/flowerDex'
+import { buildTitleSummary } from '../../../shared/titles'
 
 const STORAGE_KEY = 'emo-trash-browser-garden'
 const WATERING_KEY = 'emo-trash-browser-waterings'
@@ -125,6 +127,12 @@ const browserPreviewApi: EmoTrashApi = {
   },
   async getAchievements() {
     return buildAchievementSummary(readGarden())
+  },
+  async getFlowerDex() {
+    return buildFlowerDexSummary(readGarden())
+  },
+  async getTitles() {
+    return buildTitleSummary(readGarden())
   },
   async listEmotionCalendar(rangeDays: number, emotionTags: EmotionTag[] = []) {
     return buildEmotionCalendar(readGarden(), rangeDays, emotionTags)

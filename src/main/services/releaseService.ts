@@ -6,9 +6,11 @@ import type {
   EmotionTag,
   EmotionTimelineEntry,
   EmotionTimelineQuery,
+  FlowerDexSummary,
   GardenGrowthSnapshot,
   GardenItem,
   ReleaseEmotionInput,
+  TitleSummary,
   WaterFlowerResult
 } from '../../preload/api'
 import {
@@ -23,6 +25,8 @@ import {
   toHour
 } from '../../shared/emotionInsights'
 import { buildAchievementSummary } from '../../shared/achievements'
+import { buildFlowerDexSummary } from '../../shared/flowerDex'
+import { buildTitleSummary } from '../../shared/titles'
 import { EmotionAnalysisService } from './emotionAnalysisService'
 import { EmotionRepository } from '../db/repositories/emotionRepository'
 
@@ -99,6 +103,16 @@ export class ReleaseService {
   getAchievements(): AchievementSummary {
     const items = this.getEnrichedItems()
     return buildAchievementSummary(items)
+  }
+
+  getFlowerDex(): FlowerDexSummary {
+    const items = this.getEnrichedItems()
+    return buildFlowerDexSummary(items)
+  }
+
+  getTitles(): TitleSummary {
+    const items = this.getEnrichedItems()
+    return buildTitleSummary(items)
   }
 
   listEmotionCalendar(rangeDays: number, emotionTags: EmotionTag[] = []): EmotionCalendarDay[] {

@@ -10,12 +10,16 @@ import type {
   EmotionTag,
   EmotionTimelineEntry,
   EmotionTimelineQuery,
+  FlowerDexEntry,
+  FlowerDexSummary,
   FlowerRarity,
   GardenGrowthSnapshot,
   GardenItem,
   PickFlowerResult,
   ReleaseEmotionInput,
   SeasonalTheme,
+  TitleStatus,
+  TitleSummary,
   WaterFlowerResult
 } from '../../../preload/api'
 import type { RitualEffect } from '../../../shared/emotionMeta'
@@ -34,6 +38,8 @@ export type {
   EmotionTag,
   EmotionTimelineEntry,
   EmotionTimelineQuery,
+  FlowerDexEntry,
+  FlowerDexSummary,
   FlowerRarity,
   GardenGrowthSnapshot,
   GardenItem,
@@ -41,5 +47,7 @@ export type {
   ReleaseEmotionInput,
   RitualEffect,
   SeasonalTheme,
+  TitleStatus,
+  TitleSummary,
   WaterFlowerResult
 }

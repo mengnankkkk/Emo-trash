@@ -1,7 +1,11 @@
-import type { AchievementStatus, AchievementSummary } from '../../types/emotion'
+import { useState } from 'react'
+import type { AchievementStatus, AchievementSummary, TitleSummary } from '../../types/emotion'
+
+type AchievementsSubPage = 'achievements' | 'titles'
 
 interface AchievementsPageProps {
   summary: AchievementSummary | null
+  titleSummary: TitleSummary | null
   loading: boolean
 }
 
@@ -14,9 +18,8 @@ const categoryLabels: Record<string, string> = {
 }
 
 function AchievementCard({ achievement }: { achievement: AchievementStatus }): React.JSX.Element {
-  const progressPercent = achievement.target > 0
-    ? Math.round((achievement.progress / achievement.target) * 100)
-    : 0
+  const progressPercent =
+    achievement.target > 0 ? Math.round((achievement.progress / achievement.target) * 100) : 0
 
   return (
     <article
@@ -34,19 +37,23 @@ function AchievementCard({ achievement }: { achievement: AchievementStatus }): R
           <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
             {categoryLabels[achievement.category] ?? achievement.category}
           </span>
-          <h4 className={[
-            'mt-1 text-sm font-semibold',
-            achievement.unlocked ? 'text-[var(--accent-yellow)]' : 'text-[var(--text-primary)]'
-          ].join(' ')}>
+          <h4
+            className={[
+              'mt-1 text-sm font-semibold',
+              achievement.unlocked ? 'text-[var(--accent-yellow)]' : 'text-[var(--text-primary)]'
+            ].join(' ')}
+          >
             {achievement.title}
           </h4>
         </div>
-        <span className={[
-          'rounded-[2px] border-2 px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]',
-          achievement.unlocked
-            ? 'border-[var(--accent-yellow)] text-[var(--accent-yellow)]'
-            : 'border-[var(--border-primary)] text-[var(--text-muted)]'
-        ].join(' ')}>
+        <span
+          className={[
+            'rounded-[2px] border-2 px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]',
+            achievement.unlocked
+              ? 'border-[var(--accent-yellow)] text-[var(--accent-yellow)]'
+              : 'border-[var(--border-primary)] text-[var(--text-muted)]'
+          ].join(' ')}
+        >
           {achievement.unlocked ? '已解锁' : `${progressPercent}%`}
         </span>
       </div>
@@ -57,10 +64,10 @@ function AchievementCard({ achievement }: { achievement: AchievementStatus }): R
 
       <div className="space-y-1">
         <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
-          <span>{achievement.progress} / {achievement.target} {achievement.unit}</span>
-          {achievement.unlockedAt && (
-            <span>解锁于 {achievement.unlockedAt.split(' ')[0]}</span>
-          )}
+          <span>
+            {achievement.progress} / {achievement.target} {achievement.unit}
+          </span>
+          {achievement.unlockedAt && <span>解锁于 {achievement.unlockedAt.split(' ')[0]}</span>}
         </div>
         <div className="pixel-progress">
           <div
@@ -78,8 +85,14 @@ function AchievementCard({ achievement }: { achievement: AchievementStatus }): R
   )
 }
 
-function AchievementsPage({ summary, loading }: AchievementsPageProps): React.JSX.Element {
-  if (!summary) {
+function AchievementsPage({
+  summary,
+  titleSummary,
+  loading
+}: AchievementsPageProps): React.JSX.Element {
+  const [subPage, setSubPage] = useState<AchievementsSubPage>('achievements')
+
+  if (!summary && !titleSummary) {
     return (
       <section className="pixel-panel flex items-center justify-center p-8 text-sm text-[var(--text-muted)]">
         {loading ? '正在计算成就进度…' : '暂无成就数据。'}
@@ -87,10 +100,46 @@ function AchievementsPage({ summary, loading }: AchievementsPageProps): React.JS
     )
   }
 
+  return (
+    <section className="pixel-panel flex flex-col gap-6 p-5">
+      <div className="flex items-center gap-4 border-b-3 border-dashed border-[var(--border-primary)] pb-3">
+        <button
+          type="button"
+          onClick={() => setSubPage('achievements')}
+          className={[
+            'rounded-[2px] border-2 px-3 py-1 text-xs font-semibold tracking-[0.14em] transition',
+            subPage === 'achievements'
+              ? 'border-[var(--accent-yellow)] bg-[color-mix(in_srgb,var(--accent-yellow)_12%,var(--bg-panel))] text-[var(--accent-yellow)]'
+              : 'border-[var(--border-primary)] text-[var(--text-muted)] hover:border-[var(--border-strong)]'
+          ].join(' ')}
+        >
+          成就
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubPage('titles')}
+          className={[
+            'rounded-[2px] border-2 px-3 py-1 text-xs font-semibold tracking-[0.14em] transition',
+            subPage === 'titles'
+              ? 'border-[var(--accent-amber)] bg-[color-mix(in_srgb,var(--accent-amber)_12%,var(--bg-panel))] text-[var(--accent-amber)]'
+              : 'border-[var(--border-primary)] text-[var(--text-muted)] hover:border-[var(--border-strong)]'
+          ].join(' ')}
+        >
+          称号
+        </button>
+      </div>
+
+      {subPage === 'achievements' && summary && <AchievementsPanel summary={summary} />}
+      {subPage === 'titles' && titleSummary && <TitlesPanel titleSummary={titleSummary} />}
+    </section>
+  )
+}
+
+function AchievementsPanel({ summary }: { summary: AchievementSummary }): React.JSX.Element {
   const unlockedPercent = Math.round(summary.unlockRatio * 100)
 
   return (
-    <section className="pixel-panel flex flex-col gap-6 p-5">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-muted)]">成就系统</p>
@@ -114,7 +163,9 @@ function AchievementsPage({ summary, loading }: AchievementsPageProps): React.JS
 
       {summary.recentlyUnlocked.length > 0 && (
         <div className="rounded-[4px] border-2 border-[var(--accent-yellow)] bg-[color-mix(in_srgb,var(--accent-yellow)_8%,var(--bg-panel))] p-4">
-          <p className="mb-3 text-xs uppercase tracking-[0.22em] text-[var(--accent-yellow)]">最近解锁</p>
+          <p className="mb-3 text-xs uppercase tracking-[0.22em] text-[var(--accent-yellow)]">
+            最近解锁
+          </p>
           <div className="flex flex-wrap gap-2">
             {summary.recentlyUnlocked.map((item) => (
               <span
@@ -133,7 +184,67 @@ function AchievementsPage({ summary, loading }: AchievementsPageProps): React.JS
           <AchievementCard key={achievement.id} achievement={achievement} />
         ))}
       </div>
-    </section>
+    </div>
+  )
+}
+
+function TitlesPanel({ titleSummary }: { titleSummary: TitleSummary }): React.JSX.Element {
+  const unlockedCount = titleSummary.titles.filter((t) => t.unlocked).length
+  const totalCount = titleSummary.titles.length
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-muted)]">称号系统</p>
+          <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
+            已获得 {unlockedCount} / {totalCount}
+          </h2>
+        </div>
+        {titleSummary.activeTitle && (
+          <span className="rounded-[2px] border-2 border-[var(--accent-amber)] bg-[color-mix(in_srgb,var(--accent-amber)_12%,var(--bg-panel))] px-3 py-1 text-xs font-semibold tracking-[0.18em] text-[var(--accent-amber)]">
+            当前: {titleSummary.activeTitle.label}
+          </span>
+        )}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {titleSummary.titles.map((title) => (
+          <article
+            key={title.id}
+            className={[
+              'flex flex-col gap-2 rounded-[4px] border-2 p-4 transition',
+              title.unlocked
+                ? 'border-[var(--accent-amber)] bg-[color-mix(in_srgb,var(--accent-amber)_10%,var(--bg-panel))]'
+                : 'border-[var(--border-primary)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)]'
+            ].join(' ')}
+          >
+            <div className="flex items-center justify-between">
+              <h4
+                className={[
+                  'text-sm font-semibold',
+                  title.unlocked ? 'text-[var(--accent-amber)]' : 'text-[var(--text-primary)]'
+                ].join(' ')}
+              >
+                {title.unlocked ? '★ ' : ''}
+                {title.label}
+              </h4>
+              <span
+                className={[
+                  'rounded-[2px] border-2 px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em]',
+                  title.unlocked
+                    ? 'border-[var(--accent-amber)] text-[var(--accent-amber)]'
+                    : 'border-[var(--border-primary)] text-[var(--text-muted)]'
+                ].join(' ')}
+              >
+                {title.unlocked ? '已获得' : '未解锁'}
+              </span>
+            </div>
+            <p className="text-xs leading-5 text-[var(--text-secondary)]">{title.description}</p>
+          </article>
+        ))}
+      </div>
+    </div>
   )
 }
 
