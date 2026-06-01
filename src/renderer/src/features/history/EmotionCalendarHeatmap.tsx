@@ -39,7 +39,9 @@ function EmotionCalendarHeatmap({
             ].join(' ')}
             style={{ background }}
           >
-            <span className="text-xs text-[var(--text-secondary)]">{day.date.slice(5).replace('-', '/')}</span>
+            <span className="text-xs text-[var(--text-secondary)]">
+              {day.date.slice(5).replace('-', '/')}
+            </span>
             <div>
               <div className="text-lg font-semibold text-[var(--text-primary)]">{day.count}</div>
               <div className="mt-1 text-[11px] text-[var(--text-secondary)]">

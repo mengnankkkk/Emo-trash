@@ -3,12 +3,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import App from '../../src/renderer/src/App'
 import type {
+  DecorationSummary,
   EmotionCalendarDay,
   EmotionStatsSummary,
   EmotionTimelineEntry,
   GardenGrowthSnapshot,
   GardenItem,
-  ReleaseEmotionInput
+  ReleaseEmotionInput,
+  SeedInventoryItem
 } from '../../src/renderer/src/types/emotion'
 
 const draftAnalysis: ReleaseEmotionInput = {
@@ -42,7 +44,10 @@ const gardenItems: GardenItem[] = [
     lastWateredOn: '2026-05-11',
     emotionTag: 'anger',
     releasedOn: '2026-05-11',
-    releasedHour: 20
+    releasedHour: 20,
+    gridX: 0,
+    gridY: 0,
+    rarity: 'common'
   }
 ]
 
@@ -91,7 +96,7 @@ const growthSnapshot: GardenGrowthSnapshot = {
   totalBlooms: 12,
   recentReleaseCount: 5,
   witheredCount: 0,
-  manualWateringsRemaining: 3,
+  manualWateringsRemaining: 1,
   progressToNextLevel: 0.68,
   nextLevelLabel: '盛放'
 }
@@ -112,9 +117,34 @@ const timelineItems: EmotionTimelineEntry[] = [
     growthStage: 2,
     totalWaterings: 3,
     lastWateredOn: '2026-05-11',
-    emotionTag: 'anger'
+    emotionTag: 'anger',
+    gridX: 0,
+    gridY: 0,
+    rarity: 'common'
   }
 ]
+
+const decorationSummary: DecorationSummary = {
+  totalDecorations: 0,
+  unlockedCount: 0,
+  placedCount: 0,
+  decorations: [],
+  placed: [],
+  activeBonus: {
+    wateringBonus: 0,
+    rarityBonus: 0,
+    growthBonus: 0
+  }
+}
+
+const seedInventory: SeedInventoryItem[] = []
+
+const pickFlowerMock = vi.fn().mockResolvedValue({
+  success: true,
+  garden: [],
+  coinsEarned: 0,
+  message: '花朵还没成熟，已采摘但不会获得金币。'
+})
 
 vi.mock('../../src/renderer/src/features/ritual/RitualCanvas', () => ({
   default: () => <div data-testid="ritual-canvas-mock" />
@@ -124,8 +154,13 @@ vi.mock('../../src/renderer/src/hooks/useEmotionApi', () => ({
   useEmotionApi: () => ({
     analyzeEmotion: vi.fn().mockResolvedValue(draftAnalysis),
     listGarden: vi.fn().mockResolvedValue(gardenItems),
-    releaseEmotion: vi.fn().mockResolvedValue(gardenItems),
-    waterFlower: vi.fn().mockResolvedValue({ success: true, remaining: 2, garden: gardenItems }),
+    releaseEmotion: vi.fn().mockResolvedValue({
+      seedAdded: true,
+      emotionTag: 'anger',
+      rarity: 'common'
+    }),
+    waterFlower: vi.fn().mockResolvedValue({ success: true, remaining: 0, garden: gardenItems }),
+    pickFlower: pickFlowerMock,
     getEmotionStats: vi.fn().mockResolvedValue(statsSummary),
     getAchievements: vi.fn().mockResolvedValue({
       totalCount: 12,
@@ -145,32 +180,54 @@ vi.mock('../../src/renderer/src/hooks/useEmotionApi', () => ({
       titles: []
     }),
     listEmotionCalendar: vi.fn().mockResolvedValue(calendarDays),
-    listEmotionTimeline: vi.fn().mockResolvedValue(timelineItems)
+    listEmotionTimeline: vi.fn().mockResolvedValue(timelineItems),
+    getGardenLands: vi.fn().mockResolvedValue([
+      { id: 1, gridX: 0, gridY: 0, unlocked: true, unlockedAt: '2026-05-11 20:00:00' }
+    ]),
+    unlockGardenLand: vi.fn().mockResolvedValue({
+      success: false,
+      balance: 100,
+      message: 'not-supported'
+    }),
+    getCurrencyBalance: vi.fn().mockResolvedValue({ balance: 100 }),
+    getCurrencyTransactions: vi.fn().mockResolvedValue([]),
+    getSeedInventory: vi.fn().mockResolvedValue(seedInventory),
+    getTotalSeedCount: vi.fn().mockResolvedValue({ count: 0 }),
+    plantSeed: vi.fn().mockResolvedValue({
+      success: false,
+      garden: gardenItems,
+      message: 'no-seed'
+    }),
+    getDecorationSummary: vi.fn().mockResolvedValue(decorationSummary),
+    purchaseDecoration: vi.fn().mockResolvedValue({
+      success: false,
+      balance: 100,
+      message: 'not-supported'
+    }),
+    placeDecoration: vi.fn().mockResolvedValue({
+      id: 1,
+      type: 'stone',
+      positionX: 0,
+      positionY: 0,
+      placedAt: '2026-05-11'
+    })
   })
 }))
 
 describe('App 页面导航', () => {
-  it('在不同子页面之间切换并展示对应内容', async () => {
+  it('可以切换主要页面并显示对应内容', async () => {
     render(React.createElement(App))
 
-    expect(screen.getByText(/情绪垃圾桶/)).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: '输入室' })).toBeInTheDocument()
+    expect(screen.getByText(/情绪粉碎台/)).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
 
     const analyticsButton = screen.getByRole('button', { name: /统计/i })
     fireEvent.click(analyticsButton)
 
     await waitFor(() => {
       expect(analyticsButton).toHaveAttribute('aria-current', 'page')
-      expect(screen.getByText(/▼ 情绪统计/)).toBeInTheDocument()
-      expect(screen.getByText(/▼ 花园成长/)).toBeInTheDocument()
-    })
-
-    const historyButton = screen.getByRole('button', { name: /历史/i })
-    fireEvent.click(historyButton)
-
-    await waitFor(() => {
-      expect(historyButton).toHaveAttribute('aria-current', 'page')
-      expect(screen.getByText(/情绪历史/)).toBeInTheDocument()
+      expect(screen.getByText(/情绪统计/)).toBeInTheDocument()
+      expect(screen.getByText(/花园成长/)).toBeInTheDocument()
     })
 
     const gardenButton = screen.getByRole('button', { name: /^花园$/i })
@@ -178,8 +235,32 @@ describe('App 页面导航', () => {
 
     await waitFor(() => {
       expect(gardenButton).toHaveAttribute('aria-current', 'page')
-      expect(screen.getByText(/▼ 像素花园/)).toBeInTheDocument()
-      expect(screen.getByText('保留的是结果，不是原文。')).toBeInTheDocument()
+      expect(screen.getByText(/花园操作台/)).toBeInTheDocument()
+    })
+  })
+
+  it('采摘后即使花园变空也不会白屏', async () => {
+    render(React.createElement(App))
+
+    const gardenButton = screen.getByRole('button', { name: /^花园$/i })
+    fireEvent.click(gardenButton)
+
+    await waitFor(() => {
+      expect(gardenButton).toHaveAttribute('aria-current', 'page')
+      expect(screen.getByRole('button', { name: /采摘/i })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /采摘/i }))
+
+    const flowerCell = document.querySelector('.flower-in-grid')?.parentElement
+    expect(flowerCell).not.toBeNull()
+
+    fireEvent.click(flowerCell as HTMLElement)
+
+    await waitFor(() => {
+      expect(pickFlowerMock).toHaveBeenCalledWith(1)
+      expect(screen.getByText(/花园操作台/)).toBeInTheDocument()
+      expect(screen.getByText(/花朵/)).toBeInTheDocument()
     })
   })
 })

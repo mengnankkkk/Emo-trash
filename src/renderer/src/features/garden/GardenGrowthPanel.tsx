@@ -22,7 +22,9 @@ function GardenGrowthPanel({ snapshot, loading }: GardenGrowthPanelProps): React
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-muted)]">花园成长</p>
-          <h3 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{snapshot.levelLabel}</h3>
+          <h3 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">
+            {snapshot.levelLabel}
+          </h3>
         </div>
         <div className="flex flex-col items-end gap-1">
           <span className="rounded-[2px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] px-3 py-1 text-xs tracking-[0.2em] text-[var(--accent-rose)]">
@@ -43,11 +45,17 @@ function GardenGrowthPanel({ snapshot, loading }: GardenGrowthPanelProps): React
       <div className="mt-6 grid gap-3 md:grid-cols-2">
         <article className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] p-4">
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">当前连续</p>
-          <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">{snapshot.currentStreakDays} 天</p>
+          <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">
+            {snapshot.currentStreakDays} 天
+          </p>
         </article>
         <article className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] p-4">
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">最近 7 天活跃</p>
-          <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">{snapshot.recentReleaseCount}</p>
+          <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">
+            最近 7 天活跃
+          </p>
+          <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">
+            {snapshot.recentReleaseCount}
+          </p>
         </article>
       </div>
 

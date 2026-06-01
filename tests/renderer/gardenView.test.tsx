@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { act, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import GardenView from '../../src/renderer/src/features/garden/GardenView'

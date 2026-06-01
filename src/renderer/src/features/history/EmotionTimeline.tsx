@@ -66,7 +66,9 @@ function EmotionTimeline({ items, selectedDate }: EmotionTimelineProps): React.J
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">{asset.displayName}</p>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">
+                    {asset.displayName}
+                  </p>
                   <p className="mt-1 text-xs text-[var(--text-secondary)]">
                     {item.timestamp} · {getGrowthStageLabel(item.growthStage)}
                   </p>
@@ -86,10 +88,15 @@ function EmotionTimeline({ items, selectedDate }: EmotionTimelineProps): React.J
               <div className="mt-4 grid gap-3 md:grid-cols-[0.82fr_1.18fr]">
                 <div className="space-y-3">
                   <div className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] px-3 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">触发场景</p>
-                    <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{analysis.triggerScene}</p>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                      触发场景
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">
+                      {analysis.triggerScene}
+                    </p>
                     <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                      {intensityLabel ? `${intensityLabel}强度` : '已记录'} · {analysis.timeContextLabel}
+                      {intensityLabel ? `${intensityLabel}强度` : '已记录'} ·{' '}
+                      {analysis.timeContextLabel}
                     </p>
                   </div>
 
@@ -108,7 +115,9 @@ function EmotionTimeline({ items, selectedDate }: EmotionTimelineProps): React.J
                 </div>
 
                 <div className="rounded-[4px] border-2 border-[var(--accent-purple)] bg-[color-mix(in_srgb,var(--accent-purple)_8%,var(--bg-panel))] px-3 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-purple)]">引导问题</p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-purple)]">
+                    引导问题
+                  </p>
                   <p className="mt-2 text-sm leading-6 text-[var(--text-primary)]">
                     {analysis.guidanceQuestion}
                   </p>

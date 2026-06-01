@@ -237,6 +237,10 @@ export function getGrowthStageLabel(stage: number): string {
   return '盛放'
 }
 
+export function isFlowerMature(item: Pick<GardenItem, 'growthStage'>): boolean {
+  return item.growthStage >= 5
+}
+
 export function getPeakHourLabel(hour: number | null): string {
   if (hour === null) return '暂无释放记录'
   const period =

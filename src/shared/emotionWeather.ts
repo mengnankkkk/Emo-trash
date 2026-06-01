@@ -48,9 +48,7 @@ export function computeEmotionWeather(items: GardenItem[]): EmotionWeather {
     counts[item.emotionTag] = (counts[item.emotionTag] ?? 0) + 1
   }
 
-  const sorted = Object.entries(counts).sort(
-    (a, b) => (b[1] as number) - (a[1] as number)
-  )
+  const sorted = Object.entries(counts).sort((a, b) => (b[1] as number) - (a[1] as number))
   const [topEmotion, topCount] = sorted[0] as [EmotionTag, number]
   const ratio = topCount / todayItems.length
 

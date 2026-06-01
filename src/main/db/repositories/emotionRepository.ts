@@ -1,8 +1,8 @@
 import type Database from 'better-sqlite3'
-import type { EmotionTag, GardenItem, ReleaseEmotionInput } from '../../../preload/api'
+import type { EmotionTag, FlowerRarity, GardenItem, ReleaseEmotionInput } from '../../../preload/api'
 import { emotionAnalysisMetadataSchema, getTimeContextLabel } from '../../../shared/emotionAnalysis'
 import { enrichGardenItems } from '../../../shared/emotionInsights'
-import { determineRarity, type FlowerRarity } from '../../../shared/rarity'
+import { determineRarity } from '../../../shared/rarity'
 
 type GardenRow = {
   id: number
@@ -16,6 +16,8 @@ type GardenRow = {
   last_watered_on: string
   emotion_tag: EmotionTag
   rarity: FlowerRarity
+  grid_x: number
+  grid_y: number
   emotion_intensity?: string | null
   trigger_scene?: string | null
   guidance_question?: string | null
@@ -27,7 +29,7 @@ type GardenRow = {
 
 const GARDEN_SELECT_COLUMNS = `
   id, timestamp, released_on, released_hour, flower_type, color_hex, growth_stage,
-  total_waterings, last_watered_on, emotion_tag, rarity,
+  total_waterings, last_watered_on, emotion_tag, rarity, grid_x, grid_y,
   emotion_intensity, trigger_scene, guidance_question, suggested_labels,
   analysis_confidence, analysis_source, source_model
 `
@@ -39,9 +41,21 @@ export class EmotionRepository {
     input: ReleaseEmotionInput,
     timestamp: string,
     releasedOn: string,
-    releasedHour: number
+    releasedHour: number,
+    options?: {
+      rarity?: FlowerRarity
+      totalWaterings?: number
+      lastWateredOn?: string
+      gridX?: number
+      gridY?: number
+    }
   ): GardenItem {
-    const rarity = determineRarity()
+    const rarity = options?.rarity ?? determineRarity()
+    const totalWaterings = options?.totalWaterings ?? 1
+    const lastWateredOn = options?.lastWateredOn ?? releasedOn
+    const gridX = options?.gridX ?? 0
+    const gridY = options?.gridY ?? 0
+
     const result = this.database
       .prepare(
         `
@@ -49,9 +63,10 @@ export class EmotionRepository {
             timestamp, flower_type, color_hex, growth_stage,
             emotion_tag, emotion_intensity, trigger_scene, guidance_question,
             suggested_labels, analysis_confidence, analysis_source, source_model,
-            released_on, released_hour, total_waterings, last_watered_on, rarity
+            released_on, released_hour, total_waterings, last_watered_on, rarity,
+            grid_x, grid_y
           )
-          VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+          VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
       )
       .run(
@@ -68,14 +83,23 @@ export class EmotionRepository {
         input.analysis.sourceModel,
         releasedOn,
         releasedHour,
-        releasedOn,
-        rarity
+        totalWaterings,
+        lastWateredOn,
+        rarity,
+        gridX,
+        gridY
       )
 
     const newId = Number(result.lastInsertRowid)
-    this.database
-      .prepare(`INSERT INTO watering_log (flower_id, watered_on, source) VALUES (?, ?, 'release')`)
-      .run(newId, releasedOn)
+    if (totalWaterings > 0) {
+      const insertWateringLog = this.database.prepare(
+        `INSERT INTO watering_log (flower_id, watered_on, source) VALUES (?, ?, ?)`
+      )
+
+      for (let index = 0; index < totalWaterings; index += 1) {
+        insertWateringLog.run(newId, lastWateredOn, index === 0 ? 'release' : 'manual')
+      }
+    }
 
     return this.findById(newId)
   }
@@ -111,9 +135,7 @@ export class EmotionRepository {
   }
 
   pickFlower(flowerId: number, dateKey: string): void {
-    this.database
-      .prepare(`UPDATE digital_garden SET picked_on = ? WHERE id = ?`)
-      .run(dateKey, flowerId)
+    this.database.prepare(`UPDATE digital_garden SET picked_on = ? WHERE id = ?`).run(dateKey, flowerId)
   }
 
   recordWatering(flowerId: number, source: 'release' | 'manual', dateKey: string): void {
@@ -140,10 +162,32 @@ export class EmotionRepository {
 
   flowerExists(flowerId: number): boolean {
     const row = this.database
-      .prepare(`SELECT id FROM digital_garden WHERE id = ?`)
+      .prepare(`SELECT id FROM digital_garden WHERE id = ? AND picked_on IS NULL`)
       .get(flowerId) as { id: number } | undefined
 
     return row !== undefined
+  }
+
+  isGridOccupied(gridX: number, gridY: number): boolean {
+    const row = this.database
+      .prepare(
+        `
+        SELECT id
+        FROM digital_garden
+        WHERE grid_x = ? AND grid_y = ? AND picked_on IS NULL
+      `
+      )
+      .get(gridX, gridY) as { id: number } | undefined
+
+    return row !== undefined
+  }
+
+  findActiveFlowerById(flowerId: number): GardenItem | null {
+    const row = this.database
+      .prepare(`SELECT ${GARDEN_SELECT_COLUMNS} FROM digital_garden WHERE id = ? AND picked_on IS NULL`)
+      .get(flowerId) as GardenRow | undefined
+
+    return row ? this.mapRow(row) : null
   }
 
   syncGrowthStages(items: GardenItem[]): void {
@@ -204,7 +248,21 @@ export class EmotionRepository {
       lastWateredOn: row.last_watered_on ?? '',
       emotionTag: row.emotion_tag,
       rarity: row.rarity ?? 'common',
+      gridX: row.grid_x ?? 0,
+      gridY: row.grid_y ?? 0,
       analysis: analysis.success ? analysis.data : undefined
     }
+  }
+
+  updateFlowerPosition(flowerId: number, gridX: number, gridY: number): void {
+    this.database
+      .prepare(
+        `
+        UPDATE digital_garden
+        SET grid_x = ?, grid_y = ?
+        WHERE id = ?
+      `
+      )
+      .run(gridX, gridY, flowerId)
   }
 }

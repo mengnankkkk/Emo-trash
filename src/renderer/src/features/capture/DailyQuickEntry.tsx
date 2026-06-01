@@ -33,7 +33,9 @@ function DailyQuickEntry({ onSelect, onSkip }: DailyQuickEntryProps): React.JSX.
                   className="garden-sprite h-8 w-8"
                   src={asset.textureUrl}
                 />
-                <span className="text-xs font-medium text-[var(--text-secondary)]">{asset.displayName}</span>
+                <span className="text-xs font-medium text-[var(--text-secondary)]">
+                  {asset.displayName}
+                </span>
               </button>
             )
           })}

@@ -6,8 +6,15 @@ import {
   parseTimestamp,
   toDateKey
 } from './emotionInsights'
+import { detectEmotionBattles } from './emotionBattle'
 
-export type AchievementCategory = 'milestone' | 'streak' | 'growth' | 'diversity' | 'ritual'
+export type AchievementCategory =
+  | 'milestone'
+  | 'streak'
+  | 'growth'
+  | 'diversity'
+  | 'ritual'
+  | 'battle'
 
 export interface AchievementDefinition {
   id: string
@@ -148,6 +155,24 @@ const achievementDefinitions: AchievementDefinition[] = [
     hint: '在花园页可以单独给花朵浇水，每天最多 3 次。',
     target: 10,
     unit: '次'
+  },
+  {
+    id: 'emotion-harmonizer',
+    category: 'battle',
+    title: '情绪调和者',
+    description: '触发 10 次情绪对抗匹配。',
+    hint: '在 24 小时内释放对立情绪（愤怒↔平静、焦虑↔释然、崩溃↔疲惫）。',
+    target: 10,
+    unit: '次'
+  },
+  {
+    id: 'balance-master',
+    category: 'battle',
+    title: '平衡大师',
+    description: '收集全部 3 种情绪对。',
+    hint: '体验所有对立情绪的转换。',
+    target: 3,
+    unit: '种'
   }
 ]
 
@@ -194,7 +219,11 @@ function getTotalReleaseUnlockTimestamp(items: GardenItem[], target: number): st
 
 function getStreakUnlockTimestamp(items: GardenItem[], target: number): string | null {
   return getEarliestUnlockTimestamp(items, (slice) => {
-    const snapshot = buildGardenGrowthSnapshot(slice, 3, parseTimestamp(slice[slice.length - 1].timestamp))
+    const snapshot = buildGardenGrowthSnapshot(
+      slice,
+      3,
+      parseTimestamp(slice[slice.length - 1].timestamp)
+    )
     return snapshot.longestStreakDays >= target
   })
 }
@@ -235,6 +264,13 @@ export function buildAchievementSummary(
   const bloomCount = getBloomOrAboveCount(items)
   const manualWaterings = getManualWateringEstimate(items)
   const longestStreak = snapshot.longestStreakDays
+
+  // 情绪对抗统计
+  const battleMatches = detectEmotionBattles(items)
+  const totalBattles = battleMatches.length
+  const uniqueBattlePairs = new Set(
+    battleMatches.map((m) => `${m.emotionPair.emotion1}-${m.emotionPair.emotion2}`)
+  ).size
 
   const statuses: AchievementStatus[] = achievementDefinitions.map((definition) => {
     if (definition.id === 'first-release') {
@@ -291,6 +327,18 @@ export function buildAchievementSummary(
 
     if (definition.id === 'manual-watering-10') {
       return buildStatus(definition, manualWaterings, manualWaterings >= 10 ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'emotion-harmonizer') {
+      return buildStatus(definition, totalBattles, totalBattles >= 10 ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'balance-master') {
+      return buildStatus(
+        definition,
+        uniqueBattlePairs,
+        uniqueBattlePairs >= 3 ? toDateKey(now) : null
+      )
     }
 
     return buildStatus(definition, 0, null)

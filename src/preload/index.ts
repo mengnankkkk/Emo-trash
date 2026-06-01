@@ -8,7 +8,10 @@ import type {
   EmotionTimelineQuery,
   EmoTrashApi,
   ReleaseEmotionInput,
-  ShakeWindowInput
+  ShakeWindowInput,
+  PlaceDecorationInput,
+  PurchaseDecorationInput,
+  RemovePlacedDecorationInput
 } from './api'
 
 const api: EmoTrashApi = {
@@ -57,6 +60,42 @@ const api: EmoTrashApi = {
   },
   triggerShake(input?: Partial<ShakeWindowInput>) {
     return ipcRenderer.invoke(emoTrashChannels.triggerShake, input ?? {})
+  },
+  getEmotionBattleStats() {
+    return ipcRenderer.invoke(emoTrashChannels.getEmotionBattleStats)
+  },
+  getDecorationSummary() {
+    return ipcRenderer.invoke(emoTrashChannels.getDecorationSummary)
+  },
+  placeDecoration(input: PlaceDecorationInput) {
+    return ipcRenderer.invoke(emoTrashChannels.placeDecoration, input)
+  },
+  removePlacedDecoration(input: RemovePlacedDecorationInput) {
+    return ipcRenderer.invoke(emoTrashChannels.removePlacedDecoration, input)
+  },
+  getGardenLands() {
+    return ipcRenderer.invoke(emoTrashChannels.getGardenLands)
+  },
+  unlockGardenLand(gridX: number, gridY: number) {
+    return ipcRenderer.invoke(emoTrashChannels.unlockGardenLand, { gridX, gridY })
+  },
+  getCurrencyBalance() {
+    return ipcRenderer.invoke(emoTrashChannels.getCurrencyBalance)
+  },
+  getCurrencyTransactions(limit?: number) {
+    return ipcRenderer.invoke(emoTrashChannels.getCurrencyTransactions, { limit })
+  },
+  getSeedInventory() {
+    return ipcRenderer.invoke(emoTrashChannels.getSeedInventory)
+  },
+  getTotalSeedCount() {
+    return ipcRenderer.invoke(emoTrashChannels.getTotalSeedCount)
+  },
+  plantSeed(input) {
+    return ipcRenderer.invoke(emoTrashChannels.plantSeed, input)
+  },
+  purchaseDecoration(input: PurchaseDecorationInput) {
+    return ipcRenderer.invoke(emoTrashChannels.purchaseDecoration, input)
   }
 }
 

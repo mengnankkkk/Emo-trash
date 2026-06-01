@@ -1,30 +1,39 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AchievementSummary,
+  DecorationType,
   EmotionCalendarDay,
   EmotionIntensity,
   EmotionStatsSummary,
   EmotionTag,
   EmotionTimelineEntry,
+  EmotionBattleMatch,
   FlowerDexSummary,
   FlowerRarity,
   GardenGrowthSnapshot,
   GardenItem,
+  GardenLandCell,
+  PlacedDecoration,
   ReleaseEmotionInput,
+  SeedInventoryItem,
   TitleSummary
 } from './types/emotion'
 import CaptureInput from './features/capture/CaptureInput'
 import DailyQuickEntry from './features/capture/DailyQuickEntry'
 import EmotionStatsPanel from './features/analytics/EmotionStatsPanel'
 import GardenGrowthPanel from './features/garden/GardenGrowthPanel'
-import GardenView from './features/garden/GardenView'
+import GridGardenView from './features/garden/GridGardenView'
 import GardenWeather from './features/garden/GardenWeather'
 import EmotionCalendarHeatmap from './features/history/EmotionCalendarHeatmap'
 import EmotionFilterBar from './features/history/EmotionFilterBar'
 import EmotionTimeline from './features/history/EmotionTimeline'
 import AchievementsPage from './features/achievements/AchievementsPage'
 import AchievementToast, { type ToastItem } from './features/achievements/AchievementToast'
+import { CoinToast } from './components/CoinToast'
+import { SeedInventoryPanel } from './features/garden/SeedInventoryPanel'
 import FlowerDexPage from './features/flowerdex/FlowerDexPage'
+import { EmotionBattlePanel } from './features/battle/EmotionBattlePanel'
+import { BattleToast } from './features/battle/BattleToast'
 import RecapCard from './features/recap/RecapCard'
 import HoldToShredButton from './features/ritual/HoldToShredButton'
 import RitualCanvas from './features/ritual/RitualCanvas'
@@ -38,7 +47,10 @@ import {
 import { getTimeContextLabel } from '../../shared/emotionAnalysis'
 import { computeEmotionWeather } from '../../shared/emotionWeather'
 
-type AppPage = 'release' | 'analytics' | 'history' | 'garden' | 'achievements' | 'flowerdex'
+type AppPage = 'release' | 'analytics' | 'garden' | 'achievements' | 'flowerdex' | 'battle'
+type AnalyticsTab = 'overview' | 'history'
+
+const defaultStatusText = '把想扔掉的内容输入进来，然后长按底部按钮。'
 
 const appPages: Array<{
   value: AppPage
@@ -50,43 +62,43 @@ const appPages: Array<{
   {
     value: 'release',
     label: '释放',
-    subtitle: '输入与粉碎仪式',
-    summary: '先把当下情绪处理掉',
+    subtitle: '情绪粉碎台',
+    summary: '把情绪转成种子，送进你的花园',
     indexLabel: '01'
   },
   {
     value: 'analytics',
     label: '统计',
-    subtitle: '最近节律与成长',
-    summary: '查看最近释放节律',
+    subtitle: '情绪回看',
+    summary: '查看近况、热力图和时间线记录',
     indexLabel: '02'
-  },
-  {
-    value: 'history',
-    label: '历史',
-    subtitle: '热力图与时间轴',
-    summary: '按日期复盘释放轨迹',
-    indexLabel: '03'
   },
   {
     value: 'garden',
     label: '花园',
-    subtitle: '完整花园视图',
-    summary: '保留所有花朵结果',
-    indexLabel: '04'
+    subtitle: '种植养成',
+    summary: '播种、浇水、采摘都在这里完成',
+    indexLabel: '03'
   },
   {
     value: 'achievements',
     label: '成就',
-    subtitle: '里程碑与解锁',
-    summary: '查看释放节律的里程碑',
-    indexLabel: '05'
+    subtitle: '徽章档案',
+    summary: '查看解锁进度与当前称号',
+    indexLabel: '04'
   },
   {
     value: 'flowerdex',
     label: '图鉴',
-    subtitle: '花朵收藏册',
-    summary: '收集所有花朵变体',
+    subtitle: '花朵收集册',
+    summary: '查看花朵图鉴并管理装饰收藏',
+    indexLabel: '05'
+  },
+  {
+    value: 'battle',
+    label: '对战',
+    subtitle: '情绪碰撞场',
+    summary: '带着花园战力进入像素对决',
     indexLabel: '06'
   }
 ]
@@ -97,12 +109,23 @@ function App(): React.JSX.Element {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [ritualText, setRitualText] = useState('')
   const [gardenItems, setGardenItems] = useState<GardenItem[]>([])
+  const [gardenLands, setGardenLands] = useState<GardenLandCell[]>([])
+  const [seedInventory, setSeedInventory] = useState<SeedInventoryItem[]>([])
+  const [activeSeed, setActiveSeed] = useState<{ emotionTag: EmotionTag; rarity: string } | null>(
+    null
+  )
+  const [placedDecorations, setPlacedDecorations] = useState<PlacedDecoration[]>([])
+  const [activeDecoration, setActiveDecoration] = useState<DecorationType | null>(null)
+  const [currencyBalance, setCurrencyBalance] = useState(0)
+  const [coinToastAmount, setCoinToastAmount] = useState<number | null>(null)
+  const [battleToast, setBattleToast] = useState<EmotionBattleMatch | null>(null)
   const [ritualActive, setRitualActive] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [statusText, setStatusText] = useState('把想扔掉的内容输入进来，然后长按底部按钮。')
+  const [statusText, setStatusText] = useState(defaultStatusText)
   const [particleState, setParticleState] = useState<'idle' | 'burst'>('idle')
   const [currentEffect, setCurrentEffect] = useState<RitualEffect>('burst')
   const [activePage, setActivePage] = useState<AppPage>('release')
+  const [analyticsTab, setAnalyticsTab] = useState<AnalyticsTab>('overview')
   const [statsSummary, setStatsSummary] = useState<EmotionStatsSummary | null>(null)
   const [growthSnapshot, setGrowthSnapshot] = useState<GardenGrowthSnapshot | null>(null)
   const [calendarDays, setCalendarDays] = useState<EmotionCalendarDay[]>([])
@@ -136,7 +159,15 @@ function App(): React.JSX.Element {
     getFlowerDex,
     getTitles,
     listEmotionCalendar,
-    listEmotionTimeline
+    listEmotionTimeline,
+    getGardenLands,
+    unlockGardenLand,
+    getCurrencyBalance,
+    getSeedInventory,
+    plantSeed,
+    getDecorationSummary,
+    purchaseDecoration,
+    placeDecoration
   } = useEmotionApi()
 
   const resolvePreferredDate = useCallback(
@@ -202,14 +233,14 @@ function App(): React.JSX.Element {
 
       try {
         const [
-          nextGarden,
-          nextStats,
-          nextGrowth,
-          nextCalendar,
-          nextAchievements,
-          nextFlowerDex,
-          nextTitles
-        ] = await Promise.all([
+          nextGardenResult,
+          nextStatsResult,
+          nextGrowthResult,
+          nextCalendarResult,
+          nextAchievementsResult,
+          nextFlowerDexResult,
+          nextTitlesResult
+        ] = await Promise.allSettled([
           options.nextGarden ? Promise.resolve(options.nextGarden) : listGarden(),
           getEmotionStats(7),
           getGardenGrowth(),
@@ -223,6 +254,18 @@ function App(): React.JSX.Element {
           return
         }
 
+        const nextGarden =
+          nextGardenResult.status === 'fulfilled' ? nextGardenResult.value : options.nextGarden ?? []
+        const nextStats = nextStatsResult.status === 'fulfilled' ? nextStatsResult.value : null
+        const nextGrowth = nextGrowthResult.status === 'fulfilled' ? nextGrowthResult.value : null
+        const nextCalendar =
+          nextCalendarResult.status === 'fulfilled' ? nextCalendarResult.value : calendarDays
+        const nextAchievements =
+          nextAchievementsResult.status === 'fulfilled' ? nextAchievementsResult.value : null
+        const nextFlowerDex =
+          nextFlowerDexResult.status === 'fulfilled' ? nextFlowerDexResult.value : null
+        const nextTitles = nextTitlesResult.status === 'fulfilled' ? nextTitlesResult.value : null
+
         setGardenItems(nextGarden)
         setStatsSummary(nextStats)
         setGrowthSnapshot(nextGrowth)
@@ -231,16 +274,21 @@ function App(): React.JSX.Element {
         setFlowerDexSummary(nextFlowerDex)
         setTitleSummary(nextTitles)
 
-        const newlyUnlocked = nextAchievements.recentlyUnlocked.filter(
-          (a) => !seenUnlockedIdsRef.current.has(a.id)
-        )
-        if (newlyUnlocked.length > 0) {
-          newlyUnlocked.forEach((a) => seenUnlockedIdsRef.current.add(a.id))
-          if (seenUnlockedIdsRef.current.size > newlyUnlocked.length) {
-            setAchievementToasts((prev) => [
-              ...prev,
-              ...newlyUnlocked.map((a) => ({ id: a.id, title: a.title }))
-            ])
+        if (nextAchievements) {
+          const newlyUnlocked = nextAchievements.recentlyUnlocked.filter(
+            (achievement) => !seenUnlockedIdsRef.current.has(achievement.id)
+          )
+          if (newlyUnlocked.length > 0) {
+            newlyUnlocked.forEach((achievement) => seenUnlockedIdsRef.current.add(achievement.id))
+            if (seenUnlockedIdsRef.current.size > newlyUnlocked.length) {
+              setAchievementToasts((prev) => [
+                ...prev,
+                ...newlyUnlocked.map((achievement) => ({
+                  id: achievement.id,
+                  title: achievement.title
+                }))
+              ])
+            }
           }
         }
 
@@ -263,6 +311,10 @@ function App(): React.JSX.Element {
         } else {
           setTimelineItems([])
         }
+      } catch (error) {
+        console.error('refreshAllPanels failed', error)
+        setStatusText('界面刷新失败，请稍后重试。')
+        window.setTimeout(() => setStatusText(defaultStatusText), 2000)
       } finally {
         if (requestId === refreshRequestIdRef.current) {
           setIsDashboardLoading(false)
@@ -354,10 +406,10 @@ function App(): React.JSX.Element {
 
   const timelineHeadline = useMemo(() => {
     if (!selectedDate) {
-      return '最近时间轴'
+      return '最近时间线'
     }
 
-    return `${selectedDate} 的情绪时间轴`
+    return `${selectedDate} 的情绪时间线`
   }, [selectedDate])
 
   const previewGardenItems = useMemo(() => {
@@ -402,8 +454,8 @@ function App(): React.JSX.Element {
       emotionTag,
       analysis: {
         emotionIntensity: 'mild',
-        triggerScene: '快捷记录',
-        guidanceQuestion: '今天过得怎么样？',
+        triggerScene: '快速记录',
+        guidanceQuestion: '要不要先把这份情绪种下，再慢慢看它会开成什么？',
         suggestedLabels: [def.displayName],
         confidence: 1,
         timeContextHour: hour,
@@ -414,14 +466,19 @@ function App(): React.JSX.Element {
     }
 
     try {
-      const nextGarden = await releaseEmotion(quickInput)
-      setGardenItems(nextGarden)
-      await refreshAllPanels({ nextGarden, preferSelectedDate: true })
-      const newFlower = nextGarden[0]
-      setRecapData({ emotionTag, intensity: 'mild', rarity: newFlower?.rarity ?? 'common' })
+      const seedResult = await releaseEmotion(quickInput)
+      const nextSeeds = await getSeedInventory()
+      setSeedInventory(nextSeeds)
+
+      if (seedResult.seedAdded) {
+        setStatusText(`已获得一颗${seedResult.emotionTag}种子，去花园里播种吧。`)
+        window.setTimeout(() => setStatusText(defaultStatusText), 3000)
+      }
+
+      setRecapData({ emotionTag, intensity: 'mild', rarity: (seedResult.rarity as any) ?? 'common' })
     } catch (error) {
       console.error(error)
-      setStatusText('快捷释放没有成功，请稍后再试。')
+      setStatusText('快速释放失败，请稍后再试。')
     }
   }
 
@@ -437,21 +494,22 @@ function App(): React.JSX.Element {
     setRitualText(trimmedInput)
     setParticleState('burst')
     setRitualActive(true)
-    setStatusText('正在坍缩当前输入，只保留花朵结果。')
+    setStatusText('正在粉碎情绪，并把它凝成一颗种子……')
 
     try {
-      const nextGarden = await releaseEmotion(draftAnalysis)
-      const newFlower = nextGarden[0]
+      const seedResult = await releaseEmotion(draftAnalysis)
+      const nextSeeds = await getSeedInventory()
       const pendingRecap = {
         emotionTag: draftAnalysis.emotionTag,
         intensity: draftAnalysis.analysis.emotionIntensity,
-        rarity: newFlower?.rarity ?? 'common'
+        rarity: (seedResult.rarity as any) ?? 'common'
       }
-      setGardenItems(nextGarden)
+
       setInputValue('')
       setDraftAnalysis(null)
-      setStatusText('原文已经坍缩，新的花朵正在花园里发芽。')
-      await refreshAllPanels({ nextGarden, preferSelectedDate: true })
+      setSeedInventory(nextSeeds)
+      setStatusText('释放完成，新的种子已经放进背包。')
+      await refreshAllPanels({ preferSelectedDate: true })
 
       window.setTimeout(() => {
         setRitualActive(false)
@@ -461,7 +519,7 @@ function App(): React.JSX.Element {
       }, 1400)
     } catch (error) {
       console.error(error)
-      setStatusText('这次粉碎没有成功，请稍后再试。')
+      setStatusText('释放失败，请稍后重试。')
       window.setTimeout(() => {
         setRitualActive(false)
         setRitualText('')
@@ -476,17 +534,169 @@ function App(): React.JSX.Element {
     const result = await waterFlower(flowerId)
     if (result.success) {
       setGardenItems(result.garden)
-      await refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true })
+      void refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true }).catch(
+        (error) => {
+          console.error('refresh after pick failed', error)
+        }
+      )
     }
   }
 
-  const handlePickFlower = async (flowerId: number): Promise<void> => {
+  const _handlePickFlowerLegacy = async (flowerId: number): Promise<void> => {
     const result = await pickFlower(flowerId)
-    if (result.success) {
+
+    if (!result.success) {
+      setStatusText(result.message || '采摘失败。')
+      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+      return
+    }
+
+    setGardenItems(result.garden)
+
+    if (result.coinsEarned > 0) {
+      setCoinToastAmount(result.coinsEarned)
+    }
+
+    if (result.message) {
+      setStatusText(result.message)
+      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+    }
+
+    const balance = await getCurrencyBalance()
+    setCurrencyBalance(balance.balance)
+    await refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true })
+  }
+
+  void _handlePickFlowerLegacy
+
+  const handlePickFlower = async (flowerId: number): Promise<void> => {
+    try {
+      const result = await pickFlower(flowerId)
+
+      if (!result.success) {
+        setStatusText(result.message || '采摘失败。')
+        window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+        return
+      }
+
       setGardenItems(result.garden)
+
+      if (result.coinsEarned > 0) {
+        setCoinToastAmount(result.coinsEarned)
+      }
+
+      if (result.message) {
+        setStatusText(result.message)
+        window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+      }
+
+      try {
+        const balance = await getCurrencyBalance()
+        setCurrencyBalance(balance.balance)
+      } catch (error) {
+        console.error('load currency balance after pick failed', error)
+      }
+
+      if (result.battleMatch) {
+        setBattleToast(result.battleMatch)
+        setStatusText(`对立触发：${result.battleMatch.emotionPair.label}`)
+      }
       await refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true })
+    } catch (error) {
+      console.error('pick flower failed', error)
+      setStatusText('采摘失败，请稍后重试。')
+      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
     }
   }
+
+  const handleUnlockLand = async (gridX: number, gridY: number): Promise<void> => {
+    const result = await unlockGardenLand(gridX, gridY)
+
+    if (result.success) {
+      const nextLands = await getGardenLands()
+      setGardenLands(nextLands)
+      setCurrencyBalance(result.balance)
+      setStatusText(`地块解锁成功，花费 ${result.coinsSpent} 金币。`)
+      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+    } else {
+      setStatusText(result.message || '地块解锁失败。')
+      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+    }
+  }
+
+  const handlePlantSeed = async (gridX: number, gridY: number): Promise<void> => {
+    if (!activeSeed) return
+
+    const result = await plantSeed({
+      emotionTag: activeSeed.emotionTag,
+      rarity: activeSeed.rarity as any,
+      gridX,
+      gridY
+    })
+
+    if (result.success) {
+      setGardenItems(result.garden)
+      setActiveSeed(null)
+      setStatusText('播种成功，花朵已经开始生长。')
+      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+
+      const nextSeeds = await getSeedInventory()
+      setSeedInventory(nextSeeds)
+      await refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true })
+    } else {
+      setStatusText(result.message || '播种失败。')
+      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+    }
+  }
+
+  const loadCurrencyBalance = async (): Promise<void> => {
+    const balance = await getCurrencyBalance()
+    setCurrencyBalance(balance.balance)
+  }
+
+  const loadGardenLands = async (): Promise<void> => {
+    const lands = await getGardenLands()
+    setGardenLands(lands)
+  }
+
+  const loadSeedInventory = async (): Promise<void> => {
+    const seeds = await getSeedInventory()
+    setSeedInventory(seeds)
+  }
+
+  const loadPlacedDecorations = async (): Promise<void> => {
+    const summary = await getDecorationSummary()
+    setPlacedDecorations(summary.placed)
+  }
+
+  const handlePurchaseDecoration = async (type: DecorationType): Promise<void> => {
+    const result = await purchaseDecoration(type)
+    if (result.success) {
+      setCurrencyBalance(result.balance)
+      setStatusText('购买成功，返回花园即可放置装饰。')
+      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+    } else {
+      setStatusText(result.message || '购买失败。')
+      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+    }
+  }
+
+  const handlePlaceDecoration = async (gridX: number, gridY: number): Promise<void> => {
+    if (!activeDecoration) return
+
+    await placeDecoration({ type: activeDecoration, positionX: gridX, positionY: gridY })
+    setActiveDecoration(null)
+    await loadPlacedDecorations()
+    setStatusText('装饰已放置到花园。')
+    window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+  }
+
+  useEffect(() => {
+    loadGardenLands()
+    loadCurrencyBalance()
+    loadSeedInventory()
+    loadPlacedDecorations()
+  }, [])
 
   return (
     <main
@@ -507,11 +717,13 @@ function App(): React.JSX.Element {
             EMO-TRASH
           </span>
           <span className="game-hud-stat">
+            金币 <span className="game-hud-stat-value" style={{ color: '#ffa726' }}>{currencyBalance}</span>
+          </span>
+          <span className="game-hud-stat">
             花朵 <span className="game-hud-stat-value">{gardenItems.length}</span>
           </span>
           <span className="game-hud-stat">
-            连续{' '}
-            <span className="game-hud-stat-value">{growthSnapshot?.currentStreakDays ?? 0}天</span>
+            连续 <span className="game-hud-stat-value">{growthSnapshot?.currentStreakDays ?? 0}天</span>
           </span>
           <span className="game-hud-stat">
             浇水{' '}
@@ -526,7 +738,7 @@ function App(): React.JSX.Element {
               className="rounded-[2px] border-2 border-[var(--accent-amber)] bg-[color-mix(in_srgb,var(--accent-amber)_12%,var(--bg-panel))] px-2 py-0.5 text-[10px] font-bold tracking-[0.16em] text-[var(--accent-amber)]"
               title={titleSummary.activeTitle.description}
             >
-              ★ {titleSummary.activeTitle.label}
+              当前称号 {titleSummary.activeTitle.label}
             </span>
           )}
           <span className="text-[10px] text-[var(--text-muted)]">
@@ -559,7 +771,7 @@ function App(): React.JSX.Element {
           <div className="pixel-panel pixel-panel--rose flex flex-col p-5">
             <div className="mb-4 flex items-center justify-between border-b-3 border-dashed border-[#e91e63]/30 pb-3">
               <h2 className="text-sm font-bold tracking-widest text-[var(--accent-rose)]">
-                ▼ 情绪垃圾桶
+                情绪粉碎台
               </h2>
               <span className="text-[10px] text-[var(--text-muted)]">{statusText}</span>
             </div>
@@ -572,17 +784,17 @@ function App(): React.JSX.Element {
               >
                 <div className="flex items-center justify-between gap-3 border-b-3 border-dashed border-[#00838f]/30 pb-2">
                   <h3 className="text-[11px] font-bold tracking-widest text-[var(--accent-cyan)]">
-                    ▼ AI 情绪识别
+                    AI 情绪识别
                   </h3>
                   <span
                     className="border-2 border-[var(--accent-purple)] bg-[var(--accent-purple-soft)] px-2 py-0.5 text-[9px] text-[var(--accent-purple)]"
                     style={{ borderRadius: '2px' }}
                   >
                     {isAnalyzing
-                      ? '识别中…'
+                      ? '识别中...'
                       : analysisSummary
                         ? analysisSummary.sourceLabel
-                        : '待输入'}
+                        : '等待输入'}
                   </span>
                 </div>
                 {analysisSummary ? (
@@ -593,10 +805,10 @@ function App(): React.JSX.Element {
                           主情绪
                         </p>
                         <p className="mt-2 text-base font-semibold text-[var(--text-primary)]">
-                          {analysisSummary.emotionTag} · {analysisSummary.intensityLabel}
+                          {analysisSummary.emotionTag} / {analysisSummary.intensityLabel}
                         </p>
                         <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                          置信度 {analysisSummary.confidence}% · {analysisSummary.timeContextLabel}
+                          置信度 {analysisSummary.confidence}% / {analysisSummary.timeContextLabel}
                         </p>
                       </div>
                       <div className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] px-3 py-3">
@@ -607,7 +819,7 @@ function App(): React.JSX.Element {
                           {analysisSummary.triggerScene}
                         </p>
                         <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                          自动结合输入与时间语境生成
+                          自动结合输入内容与时间语境生成
                         </p>
                       </div>
                     </div>
@@ -644,7 +856,7 @@ function App(): React.JSX.Element {
                   </div>
                 ) : (
                   <p className="mt-4 text-sm leading-6 text-[var(--text-secondary)]">
-                    输入几句话后，这里会自动显示识别到的主情绪、触发场景和温和追问。
+                    输入几句内容后，这里会自动显示识别出的主情绪、触发场景和温和追问。
                   </p>
                 )}
               </div>
@@ -655,7 +867,7 @@ function App(): React.JSX.Element {
           <div className="pixel-panel pixel-panel--amber flex flex-col gap-4 p-5">
             <div className="border-b-3 border-dashed border-[#e65100]/30 pb-3">
               <h2 className="text-sm font-bold tracking-widest text-[var(--accent-amber)]">
-                ▼ 粉碎仪式
+                粉碎仪式
               </h2>
               <p className="mt-1 text-[10px] text-[var(--text-muted)]">长按提交后随机触发特效</p>
             </div>
@@ -664,7 +876,7 @@ function App(): React.JSX.Element {
                 className="flex items-center gap-2 border-2 border-[var(--accent-amber)] bg-[var(--accent-amber-soft)] px-3 py-2"
                 style={{ borderRadius: '4px' }}
               >
-                <span className="text-[10px] text-[var(--accent-amber)]">▸ 当前特效</span>
+                <span className="text-[10px] text-[var(--accent-amber)]">当前特效</span>
                 <span className="text-[11px] font-bold text-[var(--accent-amber)]">
                   [{activeEffectLabel}]
                 </span>
@@ -677,14 +889,18 @@ function App(): React.JSX.Element {
               effectType={currentEffect}
             />
             <p className="text-center text-[10px] leading-5 text-[var(--text-muted)]">
-              ※ 仅提取张力特征，不存原文
+              仅提取情绪特征，不保存原始文本
             </p>
             <GardenWeather weatherType={currentWeather.type} label={currentWeather.label} />
-            <GardenView
+            <GridGardenView
               items={previewGardenItems}
+              lands={gardenLands}
               growthSnapshot={growthSnapshot}
+              activeSeed={activeSeed}
               onWaterFlower={handleWaterFlower}
               onPickFlower={handlePickFlower}
+              onUnlockLand={handleUnlockLand}
+              onPlantSeed={handlePlantSeed}
               wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0}
             />
           </div>
@@ -704,77 +920,109 @@ function App(): React.JSX.Element {
       ) : null}
 
       {activePage === 'analytics' ? (
-        <section className="grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
-          <div className="pixel-panel pixel-panel--sky p-5">
-            <h2 className="mb-3 border-b-3 border-dashed border-[#0277bd]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-sky)]">
-              ▼ 情绪统计
-            </h2>
-            <EmotionStatsPanel summary={statsSummary} loading={isDashboardLoading} />
+        <section className="flex flex-col gap-4">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setAnalyticsTab('overview')}
+              className={[
+                'pixel-btn text-[11px]',
+                analyticsTab === 'overview'
+                  ? '!border-[var(--accent-sky)] !text-[var(--accent-sky)]'
+                  : ''
+              ].join(' ')}
+            >
+              总览
+            </button>
+            <button
+              type="button"
+              onClick={() => setAnalyticsTab('history')}
+              className={[
+                'pixel-btn text-[11px]',
+                analyticsTab === 'history'
+                  ? '!border-[var(--accent-purple)] !text-[var(--accent-purple)]'
+                  : ''
+              ].join(' ')}
+            >
+              历史
+            </button>
           </div>
-          <div className="pixel-panel pixel-panel--emerald p-5">
-            <h2 className="mb-3 border-b-3 border-dashed border-[#2e7d32]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-emerald)]">
-              ▼ 花园成长
-            </h2>
-            <GardenGrowthPanel snapshot={growthSnapshot} loading={isDashboardLoading} />
-          </div>
-        </section>
-      ) : null}
 
-      {activePage === 'history' ? (
-        <section className="pixel-panel pixel-panel--purple flex flex-col gap-4 p-5">
-          <h2 className="border-b-3 border-dashed border-[#7b1fa2]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-purple)]">
-            ▼ 情绪历史
-          </h2>
-          <EmotionFilterBar
-            selectedTags={emotionFilter}
-            onChange={(nextTags) => {
-              setEmotionFilter(nextTags)
-              void refreshHistory(nextTags, selectedDate)
-            }}
-          />
-          <EmotionCalendarHeatmap
-            days={calendarDays}
-            selectedDate={selectedDate}
-            onSelectDate={(nextDate) => {
-              setSelectedDate(nextDate)
-              void refreshTimeline(nextDate, emotionFilter)
-            }}
-          />
-          <div className="space-y-2 border-t-3 border-dashed border-[var(--border-primary)] pt-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold tracking-widest text-[var(--accent-purple)]">
-                ▸ {timelineHeadline}
-              </h3>
-              <span className="text-[10px] text-[var(--text-muted)]">按情绪筛选</span>
-            </div>
-            <EmotionTimeline items={timelineItems} selectedDate={selectedDate} />
-          </div>
+          {analyticsTab === 'overview' ? (
+            <section className="grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
+              <div className="pixel-panel pixel-panel--sky p-5">
+                <h2 className="mb-3 border-b-3 border-dashed border-[#0277bd]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-sky)]">
+                  情绪概览
+                </h2>
+                <EmotionStatsPanel summary={statsSummary} loading={isDashboardLoading} />
+              </div>
+              <div className="pixel-panel pixel-panel--emerald p-5">
+                <h2 className="mb-3 border-b-3 border-dashed border-[#2e7d32]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-emerald)]">
+                  花园进度
+                </h2>
+                <GardenGrowthPanel snapshot={growthSnapshot} loading={isDashboardLoading} />
+              </div>
+            </section>
+          ) : (
+            <section className="pixel-panel pixel-panel--purple flex flex-col gap-4 p-5">
+              <h2 className="border-b-3 border-dashed border-[#7b1fa2]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-purple)]">
+                情绪历史
+              </h2>
+              <EmotionFilterBar
+                selectedTags={emotionFilter}
+                onChange={(nextTags) => {
+                  setEmotionFilter(nextTags)
+                  void refreshHistory(nextTags, selectedDate)
+                }}
+              />
+              <EmotionCalendarHeatmap
+                days={calendarDays}
+                selectedDate={selectedDate}
+                onSelectDate={(nextDate) => {
+                  setSelectedDate(nextDate)
+                  void refreshTimeline(nextDate, emotionFilter)
+                }}
+              />
+              <div className="space-y-2 border-t-3 border-dashed border-[var(--border-primary)] pt-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold tracking-widest text-[var(--accent-purple)]">
+                    时间线 / {timelineHeadline}
+                  </h3>
+                  <span className="text-[10px] text-[var(--text-muted)]">按日期查看</span>
+                </div>
+                <EmotionTimeline items={timelineItems} selectedDate={selectedDate} />
+              </div>
+            </section>
+          )}
         </section>
       ) : null}
 
       {activePage === 'garden' ? (
-        <section className="grid gap-4 xl:grid-cols-[0.84fr_1.16fr]">
-          <div className="pixel-panel pixel-panel--emerald p-5">
-            <h2 className="mb-3 border-b-3 border-dashed border-[#2e7d32]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-emerald)]">
-              ▼ 花园状态
-            </h2>
-            <GardenGrowthPanel snapshot={growthSnapshot} loading={isDashboardLoading} />
-          </div>
-          <div className="pixel-panel pixel-panel--cyan p-5">
-            <h2 className="mb-3 border-b-3 border-dashed border-[#00838f]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-cyan)]">
-              ▼ 像素花园
-            </h2>
-            <div className="flex flex-col gap-3">
-              <GardenWeather weatherType={currentWeather.type} label={currentWeather.label} />
-              <GardenView
-                items={gardenItems}
-                growthSnapshot={growthSnapshot}
-                onWaterFlower={handleWaterFlower}
-                onPickFlower={handlePickFlower}
-                wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0}
-              />
-            </div>
-          </div>
+        <section className="pixel-panel pixel-panel--cyan flex flex-col gap-3 p-5">
+          <h2 className="mb-1 border-b-3 border-dashed border-[#00838f]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-cyan)]">
+            花园操作台
+          </h2>
+          <GardenWeather weatherType={currentWeather.type} label={currentWeather.label} />
+          <SeedInventoryPanel
+            seeds={seedInventory}
+            activeSeed={activeSeed}
+            onSelectSeed={(emotionTag, rarity) => setActiveSeed({ emotionTag, rarity })}
+            onDeselectSeed={() => setActiveSeed(null)}
+          />
+          <GridGardenView
+            items={gardenItems}
+            lands={gardenLands}
+            placedDecorations={placedDecorations}
+            activeDecoration={activeDecoration}
+            growthSnapshot={growthSnapshot}
+            activeSeed={activeSeed}
+            onWaterFlower={handleWaterFlower}
+            onPickFlower={handlePickFlower}
+            onUnlockLand={handleUnlockLand}
+            onPlantSeed={handlePlantSeed}
+            onPlaceDecoration={handlePlaceDecoration}
+            wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0}
+          />
         </section>
       ) : null}
 
@@ -787,13 +1035,28 @@ function App(): React.JSX.Element {
       ) : null}
 
       {activePage === 'flowerdex' ? (
-        <FlowerDexPage summary={flowerDexSummary} loading={isDashboardLoading} />
+        <FlowerDexPage
+          summary={flowerDexSummary}
+          loading={isDashboardLoading}
+          balance={currencyBalance}
+          activeDecoration={activeDecoration}
+          onPurchaseDecoration={handlePurchaseDecoration}
+          onSelectDecoration={(type) => setActiveDecoration(type)}
+        />
       ) : null}
+
+      {activePage === 'battle' ? <EmotionBattlePanel /> : null}
 
       <AchievementToast
         items={achievementToasts}
-        onDismiss={(id) => setAchievementToasts((prev) => prev.filter((t) => t.id !== id))}
+        onDismiss={(id) => setAchievementToasts((prev) => prev.filter((toast) => toast.id !== id))}
       />
+
+      {coinToastAmount !== null && (
+        <CoinToast amount={coinToastAmount} onComplete={() => setCoinToastAmount(null)} />
+      )}
+
+      <BattleToast match={battleToast} onComplete={() => setBattleToast(null)} />
 
       {showQuickEntry && (
         <DailyQuickEntry

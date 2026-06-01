@@ -36,6 +36,19 @@ export function createMainWindow(): BrowserWindow {
     }
   })
 
+  window.webContents.on('console-message', ({ level, message, lineNumber, sourceId }) => {
+    const source = sourceId ? `${sourceId}:${lineNumber}` : `line ${lineNumber}`
+    console.log(`[renderer:${level}] ${message} (${source})`)
+  })
+
+  window.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[renderer] render-process-gone', details)
+  })
+
+  window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error('[renderer] did-fail-load', { errorCode, errorDescription, validatedURL })
+  })
+
   window.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }

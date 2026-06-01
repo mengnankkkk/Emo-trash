@@ -154,7 +154,11 @@ export function detectEmotionIntensity(
   return 'mild'
 }
 
-function resolveEmotionTag(trimmedText: string, emphasisLevel: number, exclamationDensity: number): EmotionTag {
+function resolveEmotionTag(
+  trimmedText: string,
+  emphasisLevel: number,
+  exclamationDensity: number
+): EmotionTag {
   if (includesAny(trimmedText, RELIEF_KEYWORDS)) {
     return 'relief'
   }

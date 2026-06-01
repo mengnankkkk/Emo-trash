@@ -15,35 +15,18 @@ function createItem(
     growthStage: 1,
     totalWaterings: 1,
     lastWateredOn: partial.releasedOn ?? '',
+    gridX: 0,
+    gridY: 0,
+    rarity: 'common',
     ...partial
   }
 }
 
 describe('ReleaseService', () => {
-  it('在释放后返回最新花园列表，并写入 emotionTag 与时间桶', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-05-11T21:15:00'))
-
-    const createSeed = vi.fn()
-    const listAllGarden = vi.fn().mockReturnValue([
-      createItem({
-        id: 3,
-        timestamp: '2026-05-11 21:15:00',
-        releasedOn: '2026-05-11',
-        releasedHour: 21,
-        flowerType: 2,
-        colorHex: '#fb7185',
-        emotionTag: 'collapse'
-      })
-    ])
-    const syncGrowthStages = vi.fn()
-    const getManualWateringCountToday = vi.fn().mockReturnValue(0)
-
-    const service = new ReleaseService({
-      createSeed,
-      listAllGarden,
-      syncGrowthStages,
-      getManualWateringCountToday
+  it('释放后写入种子背包，并返回种子结果', () => {
+    const addSeed = vi.fn()
+    const service = new ReleaseService({} as never, {} as never, {} as never, {
+      addSeed
     } as never)
 
     const result = service.releaseEmotion({
@@ -52,25 +35,16 @@ describe('ReleaseService', () => {
       emphasisLevel: 4,
       flowerType: 2,
       colorHex: '#fb7185',
-      emotionTag: 'collapse'
+      emotionTag: 'collapse',
+      rarity: 'common'
+    } as never)
+
+    expect(addSeed).toHaveBeenCalledWith('collapse', 'common')
+    expect(result).toEqual({
+      seedAdded: true,
+      emotionTag: 'collapse',
+      rarity: 'common'
     })
-
-    expect(createSeed).toHaveBeenCalledWith(
-      expect.objectContaining({ emotionTag: 'collapse' }),
-      '2026-05-11 21:15:00',
-      '2026-05-11',
-      21
-    )
-    expect(result[0]).toEqual(
-      expect.objectContaining({
-        emotionTag: 'collapse',
-        releasedOn: '2026-05-11',
-        releasedHour: 21
-      })
-    )
-    expect(syncGrowthStages).toHaveBeenCalled()
-
-    vi.useRealTimers()
   })
 
   it('提供统计、成长和时间轴查询', () => {
@@ -113,6 +87,13 @@ describe('ReleaseService', () => {
       listAllGardenIncludingPicked: vi.fn().mockReturnValue(items),
       syncGrowthStages: vi.fn(),
       getManualWateringCountToday: vi.fn().mockReturnValue(0)
+    } as never, {
+      getPlacedDecorations: vi.fn().mockReturnValue([]),
+      getEmotionBattleCount: vi.fn().mockReturnValue(0)
+    } as never, {
+      getBalance: vi.fn().mockReturnValue(100)
+    } as never, {
+      addSeed: vi.fn()
     } as never)
 
     const stats = service.getEmotionStats(7)
@@ -128,6 +109,66 @@ describe('ReleaseService', () => {
     expect(growth.level).toBe(2)
     expect(timeline).toHaveLength(1)
     expect(timeline[0].emotionTag).toBe('anxiety')
+
+    vi.useRealTimers()
+  })
+
+  it('播种触发对立关系时返回 battleMatch', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-11T20:00:00'))
+
+    const existingFlower = createItem({
+      id: 8,
+      timestamp: '2026-05-11 18:00:00',
+      releasedOn: '2026-05-11',
+      releasedHour: 18,
+      flowerType: 1,
+      colorHex: '#f87171',
+      emotionTag: 'anger',
+      gridX: 1,
+      gridY: 1
+    })
+    const plantedFlower = createItem({
+      id: 10,
+      timestamp: '2026-05-11 20:00:00',
+      releasedOn: '2026-05-11',
+      releasedHour: 20,
+      flowerType: 5,
+      colorHex: '#34d399',
+      emotionTag: 'calm',
+      gridX: 2,
+      gridY: 1
+    })
+    const recordEmotionBattle = vi.fn()
+
+    const service = new ReleaseService({
+      isGridOccupied: vi.fn().mockReturnValue(false),
+      createSeed: vi.fn().mockReturnValue(plantedFlower),
+      listAllGarden: vi.fn().mockReturnValue([plantedFlower, existingFlower]),
+      listAllGardenIncludingPicked: vi.fn().mockReturnValue([plantedFlower, existingFlower]),
+      syncGrowthStages: vi.fn()
+    } as never, {
+      recordEmotionBattle,
+      getPlacedDecorations: vi.fn().mockReturnValue([]),
+      getEmotionBattleCount: vi.fn().mockReturnValue(0)
+    } as never, {
+      getBalance: vi.fn().mockReturnValue(100)
+    } as never, {
+      useSeed: vi.fn().mockReturnValue(true),
+      addSeed: vi.fn()
+    } as never)
+
+    const result = service.plantSeed('calm', 'common', 2, 1)
+
+    expect(result.success).toBe(true)
+    expect(result.battleMatch).toEqual(
+      expect.objectContaining({
+        flowerId1: 8,
+        flowerId2: 10,
+        rarityBoost: 0.05
+      })
+    )
+    expect(recordEmotionBattle).toHaveBeenCalledWith(result.battleMatch)
 
     vi.useRealTimers()
   })

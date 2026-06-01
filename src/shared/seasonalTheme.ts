@@ -70,7 +70,9 @@ export function computeSeasonalTheme(gardenLevel: 1 | 2 | 3, now = new Date()): 
     calendarSeasonLabel: calendarSeasonLabels[calendarSeason],
     gardenSeason,
     gardenSeasonLabel: gardenSeasonLabels[gardenSeason],
-    combinedLabel: combinedLabelMap[combinedKey] ?? `${calendarSeasonLabels[calendarSeason]}日${gardenSeasonLabels[gardenSeason]}`,
+    combinedLabel:
+      combinedLabelMap[combinedKey] ??
+      `${calendarSeasonLabels[calendarSeason]}日${gardenSeasonLabels[gardenSeason]}`,
     combinedKey,
     moodTint: moodTints[calendarSeason]
   }

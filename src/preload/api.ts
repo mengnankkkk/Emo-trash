@@ -6,6 +6,7 @@ import {
   emotionIntensitySchema
 } from '../shared/emotionAnalysis'
 import { rarityValues } from '../shared/rarity'
+import { decorationTypeValues } from '../shared/gardenDecoration'
 
 export const emoTrashChannels = {
   analyzeEmotion: 'emotion:analyze',
@@ -20,7 +21,19 @@ export const emoTrashChannels = {
   getFlowerDex: 'flowerdex:list',
   getTitles: 'titles:list',
   listEmotionCalendar: 'emotion:calendar',
-  listEmotionTimeline: 'emotion:timeline'
+  listEmotionTimeline: 'emotion:timeline',
+  getEmotionBattleStats: 'emotion:battle-stats',
+  getDecorationSummary: 'decoration:summary',
+  placeDecoration: 'decoration:place',
+  removePlacedDecoration: 'decoration:remove',
+  purchaseDecoration: 'decoration:purchase',
+  getGardenLands: 'garden:lands',
+  unlockGardenLand: 'garden:unlock-land',
+  getCurrencyBalance: 'currency:balance',
+  getCurrencyTransactions: 'currency:transactions',
+  getSeedInventory: 'seed:inventory',
+  getTotalSeedCount: 'seed:total-count',
+  plantSeed: 'seed:plant'
 } as const
 
 export const emotionTagSchema = z.enum(emotionTagValues)
@@ -43,6 +56,8 @@ export const gardenItemSchema = z.object({
   lastWateredOn: z.string(),
   emotionTag: emotionTagSchema,
   rarity: raritySchema,
+  gridX: z.number().int().min(0).max(5),
+  gridY: z.number().int().min(0).max(3),
   analysis: emotionAnalysisMetadataSchema.optional()
 })
 
@@ -111,7 +126,57 @@ export const waterFlowerResultSchema = z.object({
 
 export const pickFlowerResultSchema = z.object({
   success: z.boolean(),
-  garden: z.array(gardenItemSchema)
+  garden: z.array(gardenItemSchema),
+  coinsEarned: z.number().int().nonnegative(),
+  message: z.string().optional()
+})
+
+export const currencyBalanceSchema = z.object({
+  balance: z.number().int().nonnegative()
+})
+
+export const currencyTransactionSchema = z.object({
+  id: z.number().int().positive(),
+  amount: z.number().int(),
+  balanceAfter: z.number().int().nonnegative(),
+  transactionType: z.enum(['earn', 'spend', 'initial']),
+  description: z.string(),
+  createdAt: z.string()
+})
+
+export const unlockLandResultSchema = z.object({
+  success: z.boolean(),
+  balance: z.number().int().nonnegative(),
+  coinsSpent: z.number().int().nonnegative().optional(),
+  message: z.string().optional()
+})
+
+export const seedInventoryItemSchema = z.object({
+  id: z.number().int().positive(),
+  emotionTag: emotionTagSchema,
+  rarity: raritySchema,
+  quantity: z.number().int().nonnegative(),
+  obtainedAt: z.string()
+})
+
+export const releaseEmotionResultSchema = z.object({
+  seedAdded: z.boolean(),
+  emotionTag: emotionTagSchema,
+  rarity: raritySchema
+})
+
+export const plantSeedInputSchema = z.object({
+  emotionTag: emotionTagSchema,
+  rarity: raritySchema,
+  gridX: z.number().int(),
+  gridY: z.number().int()
+})
+
+export const plantSeedResultSchema = z.object({
+  success: z.boolean(),
+  garden: z.array(gardenItemSchema),
+  battleMatch: z.lazy(() => emotionBattleMatchSchema).nullable().optional(),
+  message: z.string().optional()
 })
 
 export const emotionCalendarDaySchema = z.object({
@@ -138,7 +203,8 @@ export const achievementCategorySchema = z.enum([
   'streak',
   'growth',
   'diversity',
-  'ritual'
+  'ritual',
+  'battle'
 ])
 
 export const achievementStatusSchema = z.object({
@@ -188,6 +254,98 @@ export const titleSummarySchema = z.object({
   titles: z.array(titleStatusSchema)
 })
 
+export const emotionPairSchema = z.object({
+  emotion1: emotionTagSchema,
+  emotion2: emotionTagSchema,
+  label: z.string(),
+  description: z.string()
+})
+
+export const emotionBattleMatchSchema = z.object({
+  id: z.string(),
+  flowerId1: z.number().int().positive(),
+  flowerId2: z.number().int().positive(),
+  emotionPair: emotionPairSchema,
+  matchedAt: z.string(),
+  rarityBoost: z.number()
+})
+
+export const emotionBattlePairProgressSchema = z.object({
+  pair: emotionPairSchema,
+  pairKey: z.string(),
+  matchCount: z.number().int().nonnegative(),
+  unlocked: z.boolean(),
+  lastMatchedAt: z.string().nullable(),
+  totalRarityBoost: z.number()
+})
+
+export const emotionBattleStatsSchema = z.object({
+  totalMatches: z.number().int().nonnegative(),
+  uniquePairs: z.number().int().nonnegative(),
+  totalPairs: z.number().int().positive(),
+  totalRarityBoost: z.number(),
+  pairProgress: z.array(emotionBattlePairProgressSchema),
+  recentMatches: z.array(emotionBattleMatchSchema)
+})
+
+export const decorationTypeSchema = z.enum(decorationTypeValues)
+
+export const placedDecorationSchema = z.object({
+  id: z.number().int().positive(),
+  type: decorationTypeSchema,
+  positionX: z.number(),
+  positionY: z.number(),
+  placedAt: z.string()
+})
+
+export const decorationStatusSchema = z.object({
+  type: decorationTypeSchema,
+  label: z.string(),
+  description: z.string(),
+  unlocked: z.boolean(),
+  owned: z.boolean(),
+  bonus: z.object({
+    type: z.string(),
+    value: z.union([z.number(), z.string()]),
+    description: z.string()
+  }),
+  emoji: z.string(),
+  colorHex: z.string()
+})
+
+export const decorationSummarySchema = z.object({
+  totalDecorations: z.number().int().nonnegative(),
+  unlockedCount: z.number().int().nonnegative(),
+  placedCount: z.number().int().nonnegative(),
+  decorations: z.array(decorationStatusSchema),
+  placed: z.array(placedDecorationSchema),
+  activeBonus: z.object({
+    wateringBonus: z.number(),
+    rarityBonus: z.number(),
+    growthBonus: z.number()
+  })
+})
+
+export const placeDecorationInputSchema = z.object({
+  type: decorationTypeSchema,
+  positionX: z.number(),
+  positionY: z.number()
+})
+
+export const removePlacedDecorationInputSchema = z.object({
+  placedId: z.number().int().positive()
+})
+
+export const purchaseDecorationInputSchema = z.object({
+  type: decorationTypeSchema
+})
+
+export const purchaseDecorationResultSchema = z.object({
+  success: z.boolean(),
+  balance: z.number().int().nonnegative(),
+  message: z.string().optional()
+})
+
 export type EmotionTag = z.infer<typeof emotionTagSchema>
 export type FlowerRarity = z.infer<typeof raritySchema>
 export type EmotionAnalysisInput = z.infer<typeof emotionAnalysisInputSchema>
@@ -213,10 +371,37 @@ export type FlowerDexEntry = z.infer<typeof flowerDexEntrySchema>
 export type FlowerDexSummary = z.infer<typeof flowerDexSummarySchema>
 export type TitleStatus = z.infer<typeof titleStatusSchema>
 export type TitleSummary = z.infer<typeof titleSummarySchema>
+export type EmotionPair = z.infer<typeof emotionPairSchema>
+export type EmotionBattleMatch = z.infer<typeof emotionBattleMatchSchema>
+export type EmotionBattlePairProgress = z.infer<typeof emotionBattlePairProgressSchema>
+export type EmotionBattleStats = z.infer<typeof emotionBattleStatsSchema>
+export type DecorationType = z.infer<typeof decorationTypeSchema>
+export type PlacedDecoration = z.infer<typeof placedDecorationSchema>
+export type DecorationStatus = z.infer<typeof decorationStatusSchema>
+export type DecorationSummary = z.infer<typeof decorationSummarySchema>
+export type PlaceDecorationInput = z.infer<typeof placeDecorationInputSchema>
+export type RemovePlacedDecorationInput = z.infer<typeof removePlacedDecorationInputSchema>
+export type PurchaseDecorationInput = z.infer<typeof purchaseDecorationInputSchema>
+export type PurchaseDecorationResult = z.infer<typeof purchaseDecorationResultSchema>
+export type CurrencyBalance = z.infer<typeof currencyBalanceSchema>
+export type CurrencyTransaction = z.infer<typeof currencyTransactionSchema>
+export type UnlockLandResult = z.infer<typeof unlockLandResultSchema>
+export type SeedInventoryItem = z.infer<typeof seedInventoryItemSchema>
+export type ReleaseEmotionResult = z.infer<typeof releaseEmotionResultSchema>
+export type PlantSeedInput = z.infer<typeof plantSeedInputSchema>
+export type PlantSeedResult = z.infer<typeof plantSeedResultSchema>
+
+export interface GardenLandCell {
+  id: number
+  gridX: number
+  gridY: number
+  unlocked: boolean
+  unlockedAt: string
+}
 
 export interface EmoTrashApi {
   analyzeEmotion(input: EmotionAnalysisInput): Promise<ReleaseEmotionInput>
-  releaseEmotion(input: ReleaseEmotionInput): Promise<GardenItem[]>
+  releaseEmotion(input: ReleaseEmotionInput): Promise<ReleaseEmotionResult>
   listGarden(): Promise<GardenItem[]>
   waterFlower(flowerId: number): Promise<WaterFlowerResult>
   pickFlower(flowerId: number): Promise<PickFlowerResult>
@@ -228,4 +413,16 @@ export interface EmoTrashApi {
   listEmotionCalendar(rangeDays: number, emotionTags?: EmotionTag[]): Promise<EmotionCalendarDay[]>
   listEmotionTimeline(query?: Partial<EmotionTimelineQuery>): Promise<EmotionTimelineEntry[]>
   triggerShake(input?: Partial<ShakeWindowInput>): Promise<void>
+  getEmotionBattleStats(): Promise<EmotionBattleStats>
+  getDecorationSummary(): Promise<DecorationSummary>
+  placeDecoration(input: PlaceDecorationInput): Promise<PlacedDecoration>
+  removePlacedDecoration(input: RemovePlacedDecorationInput): Promise<{ success: boolean }>
+  purchaseDecoration(input: PurchaseDecorationInput): Promise<PurchaseDecorationResult>
+  getGardenLands(): Promise<GardenLandCell[]>
+  unlockGardenLand(gridX: number, gridY: number): Promise<UnlockLandResult>
+  getCurrencyBalance(): Promise<CurrencyBalance>
+  getCurrencyTransactions(limit?: number): Promise<CurrencyTransaction[]>
+  getSeedInventory(): Promise<SeedInventoryItem[]>
+  getTotalSeedCount(): Promise<{ count: number }>
+  plantSeed(input: PlantSeedInput): Promise<PlantSeedResult>
 }

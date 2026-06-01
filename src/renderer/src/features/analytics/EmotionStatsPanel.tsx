@@ -30,15 +30,25 @@ function EmotionStatsPanel({ summary, loading }: EmotionStatsPanelProps): React.
         <div className="mt-6 flex flex-1 flex-col gap-5">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <article className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">释放次数</p>
-              <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">{summary.totalReleases}</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">
+                释放次数
+              </p>
+              <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">
+                {summary.totalReleases}
+              </p>
             </article>
             <article className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">高频时段</p>
-              <p className="mt-3 text-lg font-semibold text-[var(--text-primary)]">{summary.peakHourLabel}</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">
+                高频时段
+              </p>
+              <p className="mt-3 text-lg font-semibold text-[var(--text-primary)]">
+                {summary.peakHourLabel}
+              </p>
             </article>
             <article className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">当前连续</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">
+                当前连续
+              </p>
               <p
                 className="mt-3 text-3xl font-semibold text-[var(--text-primary)]"
                 data-current-streak={summary.currentStreakDays}
@@ -47,16 +57,24 @@ function EmotionStatsPanel({ summary, loading }: EmotionStatsPanelProps): React.
               </p>
             </article>
             <article className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">最长连续</p>
-              <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">{summary.longestStreakDays}</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">
+                最长连续
+              </p>
+              <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">
+                {summary.longestStreakDays}
+              </p>
             </article>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
             <div className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] p-4">
               <div className="mb-4 flex items-center justify-between">
-                <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">情绪占比</p>
-                <span className="text-xs text-[var(--text-muted)]">看最近 {summary.rangeDays} 天</span>
+                <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">
+                  情绪占比
+                </p>
+                <span className="text-xs text-[var(--text-muted)]">
+                  看最近 {summary.rangeDays} 天
+                </span>
               </div>
               <div className="space-y-3">
                 {summary.emotionBreakdown.map((item) => {
@@ -78,7 +96,9 @@ function EmotionStatsPanel({ summary, loading }: EmotionStatsPanelProps): React.
                             {asset.displayName}
                           </span>
                         </div>
-                        <span className="text-xs text-[var(--text-secondary)]">{item.count} 次</span>
+                        <span className="text-xs text-[var(--text-secondary)]">
+                          {item.count} 次
+                        </span>
                       </div>
                       <div className="pixel-progress">
                         <div

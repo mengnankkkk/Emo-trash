@@ -33,6 +33,76 @@ export const WATERING_LOG_SCHEMA = `
   );
 `
 
+export const EMOTION_BATTLE_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS emotion_battle (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    flower_id_1 INTEGER NOT NULL,
+    flower_id_2 INTEGER NOT NULL,
+    emotion_pair TEXT NOT NULL,
+    matched_at TEXT NOT NULL,
+    rarity_boost REAL DEFAULT 0.05
+  );
+`
+
+export const DECORATION_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS decoration (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    unlocked_at TEXT NOT NULL
+  );
+`
+
+export const PLACED_DECORATION_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS placed_decoration (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    decoration_id INTEGER NOT NULL,
+    position_x REAL NOT NULL,
+    position_y REAL NOT NULL,
+    placed_at TEXT NOT NULL,
+    FOREIGN KEY (decoration_id) REFERENCES decoration(id)
+  );
+`
+
+export const GARDEN_LAND_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS garden_land (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    grid_x INTEGER NOT NULL,
+    grid_y INTEGER NOT NULL,
+    unlocked BOOLEAN DEFAULT 0,
+    unlocked_at TEXT DEFAULT '',
+    UNIQUE(grid_x, grid_y)
+  );
+`
+
+export const USER_CURRENCY_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS user_currency (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    balance INTEGER DEFAULT 0,
+    updated_at TEXT NOT NULL
+  );
+`
+
+export const CURRENCY_TRANSACTION_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS currency_transaction (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    amount INTEGER NOT NULL,
+    balance_after INTEGER NOT NULL,
+    transaction_type TEXT NOT NULL,
+    description TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+`
+
+export const SEED_INVENTORY_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS seed_inventory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    emotion_tag TEXT NOT NULL,
+    rarity TEXT NOT NULL,
+    quantity INTEGER DEFAULT 1,
+    obtained_at TEXT NOT NULL
+  );
+`
+
 function getColumnNames(database: Database.Database): string[] {
   const rows = database.prepare(`PRAGMA table_info(digital_garden)`).all() as Array<{
     name: string
@@ -148,9 +218,78 @@ function backfillWateringFields(database: Database.Database): void {
   commit(rows)
 }
 
+function initializeGardenLand(database: Database.Database): void {
+  // 检查是否已经初始化过土地
+  const count = database.prepare('SELECT COUNT(*) as count FROM garden_land').get() as {
+    count: number
+  }
+
+  if (count.count > 0) {
+    return
+  }
+
+  // 初始化6x4=24块土地，中心4块默认解锁
+  const insert = database.prepare(`
+    INSERT INTO garden_land (grid_x, grid_y, unlocked, unlocked_at)
+    VALUES (?, ?, ?, ?)
+  `)
+
+  const now = new Date().toISOString()
+  const insertMany = database.transaction(() => {
+    for (let y = 0; y < 4; y++) {
+      for (let x = 0; x < 6; x++) {
+        // 中心4块地默认解锁 (x: 2,3, y: 1,2)
+        const isCenter = (x === 2 || x === 3) && (y === 1 || y === 2)
+        insert.run(x, y, isCenter ? 1 : 0, isCenter ? now : '')
+      }
+    }
+  })
+
+  insertMany()
+}
+
+function initializeUserCurrency(database: Database.Database): void {
+  // 检查是否已经初始化过货币
+  const count = database.prepare('SELECT COUNT(*) as count FROM user_currency').get() as {
+    count: number
+  }
+
+  if (count.count > 0) {
+    return
+  }
+
+  // 初始化用户货币，起始金币100
+  const now = new Date().toISOString()
+  database
+    .prepare(
+      `
+    INSERT INTO user_currency (balance, updated_at)
+    VALUES (100, ?)
+  `
+    )
+    .run(now)
+
+  // 记录初始交易
+  database
+    .prepare(
+      `
+    INSERT INTO currency_transaction (amount, balance_after, transaction_type, description, created_at)
+    VALUES (100, 100, 'initial', '初始金币', ?)
+  `
+    )
+    .run(now)
+}
+
 export function initializeSchema(database: Database.Database): void {
   database.exec(DIGITAL_GARDEN_SCHEMA)
   database.exec(WATERING_LOG_SCHEMA)
+  database.exec(EMOTION_BATTLE_SCHEMA)
+  database.exec(DECORATION_SCHEMA)
+  database.exec(PLACED_DECORATION_SCHEMA)
+  database.exec(GARDEN_LAND_SCHEMA)
+  database.exec(USER_CURRENCY_SCHEMA)
+  database.exec(CURRENCY_TRANSACTION_SCHEMA)
+  database.exec(SEED_INVENTORY_SCHEMA)
   ensureColumn(database, 'emotion_tag', "emotion_tag TEXT DEFAULT 'fatigue'")
   ensureColumn(database, 'emotion_intensity', "emotion_intensity TEXT DEFAULT 'moderate'")
   ensureColumn(database, 'trigger_scene', "trigger_scene TEXT DEFAULT ''")
@@ -165,6 +304,10 @@ export function initializeSchema(database: Database.Database): void {
   ensureColumn(database, 'last_watered_on', "last_watered_on TEXT DEFAULT ''")
   ensureColumn(database, 'picked_on', 'picked_on TEXT')
   ensureColumn(database, 'rarity', "rarity TEXT DEFAULT 'common'")
+  ensureColumn(database, 'grid_x', 'grid_x INTEGER DEFAULT 0')
+  ensureColumn(database, 'grid_y', 'grid_y INTEGER DEFAULT 0')
   backfillDerivedFields(database)
   backfillWateringFields(database)
+  initializeGardenLand(database)
+  initializeUserCurrency(database)
 }

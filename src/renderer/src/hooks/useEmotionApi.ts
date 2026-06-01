@@ -1,5 +1,8 @@
 import { useCallback } from 'react'
 import type {
+  CurrencyBalance,
+  CurrencyTransaction,
+  DecorationSummary,
   EmotionAnalysisInput,
   EmotionStatsRange,
   EmotionTag,
@@ -7,20 +10,28 @@ import type {
   FlowerDexSummary,
   GardenGrowthSnapshot,
   GardenItem,
+  GardenLandCell,
   EmotionCalendarDay,
   EmotionStatsSummary,
   EmotionTimelineEntry,
+  PlaceDecorationInput,
+  PurchaseDecorationResult,
   TitleSummary,
+  UnlockLandResult,
   WaterFlowerResult,
   PickFlowerResult,
-  AchievementSummary
+  AchievementSummary,
+  ReleaseEmotionResult,
+  SeedInventoryItem,
+  PlantSeedInput,
+  PlantSeedResult
 } from '../types/emotion'
-import type { ReleaseEmotionInput } from '../../../preload/api'
+import type { ReleaseEmotionInput, DecorationType, PlacedDecoration } from '../../../preload/api'
 import { getRuntimeApi } from '../lib/runtimeApi'
 
 export function useEmotionApi(): {
   analyzeEmotion: (text: string) => Promise<ReleaseEmotionInput>
-  releaseEmotion: (input: ReleaseEmotionInput) => Promise<GardenItem[]>
+  releaseEmotion: (input: ReleaseEmotionInput) => Promise<ReleaseEmotionResult>
   listGarden: () => Promise<GardenItem[]>
   waterFlower: (flowerId: number) => Promise<WaterFlowerResult>
   pickFlower: (flowerId: number) => Promise<PickFlowerResult>
@@ -34,13 +45,23 @@ export function useEmotionApi(): {
     emotionTags?: EmotionTag[]
   ) => Promise<EmotionCalendarDay[]>
   listEmotionTimeline: (query?: Partial<EmotionTimelineQuery>) => Promise<EmotionTimelineEntry[]>
+  getGardenLands: () => Promise<GardenLandCell[]>
+  unlockGardenLand: (gridX: number, gridY: number) => Promise<UnlockLandResult>
+  getCurrencyBalance: () => Promise<CurrencyBalance>
+  getCurrencyTransactions: (limit?: number) => Promise<CurrencyTransaction[]>
+  getSeedInventory: () => Promise<SeedInventoryItem[]>
+  getTotalSeedCount: () => Promise<{ count: number }>
+  plantSeed: (input: PlantSeedInput) => Promise<PlantSeedResult>
+  getDecorationSummary: () => Promise<DecorationSummary>
+  purchaseDecoration: (type: DecorationType) => Promise<PurchaseDecorationResult>
+  placeDecoration: (input: PlaceDecorationInput) => Promise<PlacedDecoration>
 } {
   const analyzeEmotion = useCallback(async (text: string): Promise<ReleaseEmotionInput> => {
     const input: EmotionAnalysisInput = { text }
     return getRuntimeApi().analyzeEmotion(input)
   }, [])
 
-  const releaseEmotion = useCallback(async (input: ReleaseEmotionInput): Promise<GardenItem[]> => {
+  const releaseEmotion = useCallback(async (input: ReleaseEmotionInput): Promise<ReleaseEmotionResult> => {
     const api = getRuntimeApi()
     await api.triggerShake({
       intensity: Math.min(28, 10 + input.emphasisLevel),
@@ -90,6 +111,46 @@ export function useEmotionApi(): {
     return getRuntimeApi().listEmotionTimeline(query)
   }, [])
 
+  const getGardenLands = useCallback(() => {
+    return getRuntimeApi().getGardenLands()
+  }, [])
+
+  const unlockGardenLand = useCallback((gridX: number, gridY: number) => {
+    return getRuntimeApi().unlockGardenLand(gridX, gridY)
+  }, [])
+
+  const getCurrencyBalance = useCallback(() => {
+    return getRuntimeApi().getCurrencyBalance()
+  }, [])
+
+  const getCurrencyTransactions = useCallback((limit?: number) => {
+    return getRuntimeApi().getCurrencyTransactions(limit)
+  }, [])
+
+  const getSeedInventory = useCallback(() => {
+    return getRuntimeApi().getSeedInventory()
+  }, [])
+
+  const getTotalSeedCount = useCallback(() => {
+    return getRuntimeApi().getTotalSeedCount()
+  }, [])
+
+  const plantSeed = useCallback((input: PlantSeedInput) => {
+    return getRuntimeApi().plantSeed(input)
+  }, [])
+
+  const getDecorationSummary = useCallback(() => {
+    return getRuntimeApi().getDecorationSummary()
+  }, [])
+
+  const purchaseDecoration = useCallback((type: DecorationType) => {
+    return getRuntimeApi().purchaseDecoration({ type })
+  }, [])
+
+  const placeDecoration = useCallback((input: PlaceDecorationInput) => {
+    return getRuntimeApi().placeDecoration(input)
+  }, [])
+
   return {
     analyzeEmotion,
     releaseEmotion,
@@ -102,6 +163,16 @@ export function useEmotionApi(): {
     getFlowerDex,
     getTitles,
     listEmotionCalendar,
-    listEmotionTimeline
+    listEmotionTimeline,
+    getGardenLands,
+    unlockGardenLand,
+    getCurrencyBalance,
+    getCurrencyTransactions,
+    getSeedInventory,
+    getTotalSeedCount,
+    plantSeed,
+    getDecorationSummary,
+    purchaseDecoration,
+    placeDecoration
   }
 }

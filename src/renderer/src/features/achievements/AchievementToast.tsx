@@ -22,7 +22,13 @@ function AchievementToast({ items, onDismiss }: AchievementToastProps): React.JS
   )
 }
 
-function ToastEntry({ item, onDismiss }: { item: ToastItem; onDismiss: (id: string) => void }): React.JSX.Element {
+function ToastEntry({
+  item,
+  onDismiss
+}: {
+  item: ToastItem
+  onDismiss: (id: string) => void
+}): React.JSX.Element {
   const [visible, setVisible] = useState(true)
 
   useEffect(() => {
@@ -42,7 +48,9 @@ function ToastEntry({ item, onDismiss }: { item: ToastItem; onDismiss: (id: stri
     >
       <span className="text-lg">✦</span>
       <div className="flex flex-col">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-yellow)]">成就解锁</span>
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-yellow)]">
+          成就解锁
+        </span>
         <span className="text-sm font-semibold text-[var(--text-primary)]">{item.title}</span>
       </div>
     </div>
