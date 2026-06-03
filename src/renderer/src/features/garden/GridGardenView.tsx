@@ -28,6 +28,7 @@ interface GridGardenViewProps {
   lands: GardenLandCell[]
   placedDecorations?: PlacedDecoration[]
   activeDecoration?: DecorationType | null
+  movingDecoration?: PlacedDecoration | null
   growthSnapshot: GardenGrowthSnapshot | null
   activeSeed?: { emotionTag: string; rarity: string } | null
   onWaterFlower?: (flowerId: number) => void
@@ -35,6 +36,8 @@ interface GridGardenViewProps {
   onUnlockLand?: (gridX: number, gridY: number) => void
   onPlantSeed?: (gridX: number, gridY: number) => void
   onPlaceDecoration?: (gridX: number, gridY: number) => void
+  onMoveDecoration?: (gridX: number, gridY: number) => void
+  onSelectDecorationToMove?: (decoration: PlacedDecoration) => void
   wateringDisabled?: boolean
 }
 
@@ -43,6 +46,7 @@ function GridGardenView({
   lands,
   placedDecorations = [],
   activeDecoration,
+  movingDecoration,
   growthSnapshot,
   activeSeed,
   onWaterFlower,
@@ -50,6 +54,8 @@ function GridGardenView({
   onUnlockLand,
   onPlantSeed,
   onPlaceDecoration,
+  onMoveDecoration,
+  onSelectDecorationToMove,
   wateringDisabled
 }: GridGardenViewProps): React.JSX.Element {
   const [activeTool, setActiveTool] = useState<'none' | 'water' | 'pick' | 'unlock'>('none')
@@ -60,6 +66,7 @@ function GridGardenView({
 
   const isPlantingMode = activeSeed !== null && activeSeed !== undefined
   const isDecorationMode = activeDecoration !== null && activeDecoration !== undefined
+  const isMovingMode = movingDecoration !== null && movingDecoration !== undefined
 
   const handleToolClick = useCallback((tool: 'water' | 'pick' | 'unlock') => {
     setActiveTool((prev) => (prev === tool ? 'none' : tool))
@@ -78,13 +85,26 @@ function GridGardenView({
     [activeTool, onWaterFlower, onPickFlower]
   )
 
+  const handleDecorationClick = useCallback(
+    (decoration: PlacedDecoration) => {
+      if (onSelectDecorationToMove) {
+        onSelectDecorationToMove(decoration)
+      }
+    },
+    [onSelectDecorationToMove]
+  )
+
   const handleLandClick = useCallback(
-    (gridX: number, gridY: number, hasFlower: boolean, isUnlocked: boolean) => {
-      if (isPlantingMode && isUnlocked && !hasFlower && onPlantSeed) {
+    (gridX: number, gridY: number, hasFlower: boolean, hasDecoration: boolean, isUnlocked: boolean) => {
+      if (isPlantingMode && isUnlocked && !hasFlower && !hasDecoration && onPlantSeed) {
         onPlantSeed(gridX, gridY)
         return
       }
-      if (isDecorationMode && isUnlocked && !hasFlower && onPlaceDecoration) {
+      if (isMovingMode && isUnlocked && !hasFlower && !hasDecoration && onMoveDecoration) {
+        onMoveDecoration(gridX, gridY)
+        return
+      }
+      if (isDecorationMode && isUnlocked && !hasFlower && !hasDecoration && onPlaceDecoration) {
         onPlaceDecoration(gridX, gridY)
         return
       }
@@ -92,7 +112,7 @@ function GridGardenView({
         onUnlockLand(gridX, gridY)
       }
     },
-    [activeTool, isPlantingMode, isDecorationMode, onUnlockLand, onPlantSeed, onPlaceDecoration]
+    [activeTool, isPlantingMode, isMovingMode, isDecorationMode, onUnlockLand, onPlantSeed, onMoveDecoration, onPlaceDecoration]
   )
 
   // 创建装饰物地图
@@ -279,6 +299,8 @@ function GridGardenView({
             const isUnlocked = land?.unlocked ?? false
             const isSprouting = flower ? sproutingIds.has(flower.id) : false
             const canPlaceDecoration = isDecorationMode && isUnlocked && !flower && !decoration
+            const canMoveDecoration = isMovingMode && isUnlocked && !flower && !decoration
+            const isDecorationBeingMoved = movingDecoration && decoration && decoration.id === movingDecoration.id
 
             return (
               <div
@@ -297,6 +319,9 @@ function GridGardenView({
                   canPlaceDecoration
                     ? 'cursor-pointer hover:border-amber-500 hover:bg-[#a08855]'
                     : '',
+                  canMoveDecoration
+                    ? 'cursor-pointer hover:border-blue-500 hover:bg-[#7088a5]'
+                    : '',
                   activeTool !== 'none' && flower ? 'cursor-pointer' : ''
                 ].join(' ')}
                 style={{
@@ -308,11 +333,13 @@ function GridGardenView({
                 }}
                 onClick={() => {
                   if (isPlantingMode && isUnlocked && !flower && !decoration) {
-                    handleLandClick(gridX, gridY, false, true)
+                    handleLandClick(gridX, gridY, false, false, true)
+                  } else if (canMoveDecoration) {
+                    handleLandClick(gridX, gridY, false, false, true)
                   } else if (canPlaceDecoration) {
-                    handleLandClick(gridX, gridY, false, true)
+                    handleLandClick(gridX, gridY, false, false, true)
                   } else if (!isUnlocked && activeTool === 'unlock') {
-                    handleLandClick(gridX, gridY, false, false)
+                    handleLandClick(gridX, gridY, false, false, false)
                   } else if (flower && (activeTool === 'water' || activeTool === 'pick')) {
                     handleFlowerClick(flower.id)
                   }
@@ -336,8 +363,28 @@ function GridGardenView({
                   </div>
                 )}
 
-                {decoration && isUnlocked && (
+                {canMoveDecoration && (
                   <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xl opacity-60 animate-pulse">📍</span>
+                  </div>
+                )}
+
+                {decoration && isUnlocked && (
+                  <div
+                    className={[
+                      'absolute inset-0 flex items-center justify-center transition-all',
+                      isDecorationBeingMoved ? 'opacity-50 animate-pulse' : '',
+                      !isMovingMode && !isPlantingMode && !isDecorationMode && activeTool === 'none'
+                        ? 'cursor-pointer hover:scale-110'
+                        : ''
+                    ].join(' ')}
+                    onClick={(e) => {
+                      if (!isMovingMode && !isPlantingMode && !isDecorationMode && activeTool === 'none') {
+                        e.stopPropagation()
+                        handleDecorationClick(decoration)
+                      }
+                    }}
+                  >
                     <span className="text-3xl drop-shadow-md">
                       {getDecorationDefinition(decoration.type).emoji}
                     </span>

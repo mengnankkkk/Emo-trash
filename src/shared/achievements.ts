@@ -173,6 +173,132 @@ const achievementDefinitions: AchievementDefinition[] = [
     hint: '体验所有对立情绪的转换。',
     target: 3,
     unit: '种'
+  },
+  {
+    id: 'collector-5',
+    category: 'diversity',
+    title: '初级收藏家',
+    description: '收集 5 种不同的花朵类型。',
+    hint: '尝试释放不同情绪和强度的组合。',
+    target: 5,
+    unit: '种'
+  },
+  {
+    id: 'collector-10',
+    category: 'diversity',
+    title: '中级收藏家',
+    description: '收集 10 种不同的花朵类型。',
+    hint: '探索更多情绪和稀有度的组合。',
+    target: 10,
+    unit: '种'
+  },
+  {
+    id: 'collector-20',
+    category: 'diversity',
+    title: '高级收藏家',
+    description: '收集 20 种不同的花朵类型。',
+    hint: '成为真正的花朵收藏大师。',
+    target: 20,
+    unit: '种'
+  },
+  {
+    id: 'first-shiny',
+    category: 'growth',
+    title: '初遇闪光',
+    description: '获得首个闪光花朵。',
+    hint: '闪光花朵有 20% 的几率出现。',
+    target: 1,
+    unit: '朵'
+  },
+  {
+    id: 'first-stellar',
+    category: 'growth',
+    title: '星辰降临',
+    description: '获得首个星光花朵。',
+    hint: '星光花朵有 5% 的几率出现。',
+    target: 1,
+    unit: '朵'
+  },
+  {
+    id: 'first-legendary',
+    category: 'growth',
+    title: '传说诞生',
+    description: '获得首个传说花朵。',
+    hint: '传说花朵有 1% 的几率出现，需要运气和坚持。',
+    target: 1,
+    unit: '朵'
+  },
+  {
+    id: 'watering-50',
+    category: 'ritual',
+    title: '勤劳园丁',
+    description: '累计完成 50 次手动浇水。',
+    hint: '持续照顾花园的奖励。',
+    target: 50,
+    unit: '次'
+  },
+  {
+    id: 'watering-100',
+    category: 'ritual',
+    title: '浇水大师',
+    description: '累计完成 100 次手动浇水。',
+    hint: '你已经是花园护理专家了。',
+    target: 100,
+    unit: '次'
+  },
+  {
+    id: 'watering-500',
+    category: 'ritual',
+    title: '浇水传说',
+    description: '累计完成 500 次手动浇水。',
+    hint: '无人能比的护花使者。',
+    target: 500,
+    unit: '次'
+  },
+  {
+    id: 'streak-30',
+    category: 'streak',
+    title: '连续一月',
+    description: '连续 30 天进行至少一次释放。',
+    hint: '这是一个月的坚持，已经形成稳固习惯。',
+    target: 30,
+    unit: '天'
+  },
+  {
+    id: 'full-garden',
+    category: 'milestone',
+    title: '完整花园',
+    description: '解锁全部 24 块土地。',
+    hint: '让花园达到最大规模。',
+    target: 24,
+    unit: '块'
+  },
+  {
+    id: 'decorator',
+    category: 'ritual',
+    title: '装饰大师',
+    description: '收集全部 8 种装饰物。',
+    hint: '用装饰物美化你的花园。',
+    target: 8,
+    unit: '种'
+  },
+  {
+    id: 'battle-master',
+    category: 'battle',
+    title: '对抗专家',
+    description: '触发 50 次情绪对抗匹配。',
+    hint: '熟练掌握情绪转换的艺术。',
+    target: 50,
+    unit: '次'
+  },
+  {
+    id: 'battle-legend',
+    category: 'battle',
+    title: '对抗传说',
+    description: '触发 100 次情绪对抗匹配。',
+    hint: '情绪平衡的终极大师。',
+    target: 100,
+    unit: '次'
   }
 ]
 
@@ -192,6 +318,19 @@ function getBloomOrAboveCount(items: GardenItem[]): number {
 
 function getManualWateringEstimate(items: GardenItem[]): number {
   return items.reduce((sum, item) => sum + Math.max(0, item.totalWaterings - 1), 0)
+}
+
+function getDistinctFlowerTypeCount(items: GardenItem[]): number {
+  const seen = new Set<string>()
+  items.forEach((item) => {
+    const key = `${item.emotionTag}-${item.rarity}`
+    seen.add(key)
+  })
+  return seen.size
+}
+
+function hasRarity(items: GardenItem[], rarity: string): boolean {
+  return items.some((item) => item.rarity === rarity)
 }
 
 function getEarliestUnlockTimestamp(
@@ -254,16 +393,22 @@ function buildStatus(
 
 export function buildAchievementSummary(
   rawItems: GardenItem[],
+  unlockedLandCount = 0,
+  ownedDecorationCount = 0,
   now = new Date()
 ): AchievementSummary {
   const items = enrichGardenItems(rawItems, now)
   const snapshot = buildGardenGrowthSnapshot(items, 3, now)
   const totalReleases = items.length
   const distinctEmotions = getDistinctEmotionCount(items)
+  const distinctFlowerTypes = getDistinctFlowerTypeCount(items)
   const flourishCount = getFlourishCount(items)
   const bloomCount = getBloomOrAboveCount(items)
   const manualWaterings = getManualWateringEstimate(items)
   const longestStreak = snapshot.longestStreakDays
+  const hasShiny = hasRarity(items, 'shiny')
+  const hasStellar = hasRarity(items, 'stellar')
+  const hasLegendary = hasRarity(items, 'legendary')
 
   // 情绪对抗统计
   const battleMatches = detectEmotionBattles(items)
@@ -339,6 +484,62 @@ export function buildAchievementSummary(
         uniqueBattlePairs,
         uniqueBattlePairs >= 3 ? toDateKey(now) : null
       )
+    }
+
+    if (definition.id === 'collector-5') {
+      return buildStatus(definition, distinctFlowerTypes, distinctFlowerTypes >= 5 ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'collector-10') {
+      return buildStatus(definition, distinctFlowerTypes, distinctFlowerTypes >= 10 ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'collector-20') {
+      return buildStatus(definition, distinctFlowerTypes, distinctFlowerTypes >= 20 ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'first-shiny') {
+      return buildStatus(definition, hasShiny ? 1 : 0, hasShiny ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'first-stellar') {
+      return buildStatus(definition, hasStellar ? 1 : 0, hasStellar ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'first-legendary') {
+      return buildStatus(definition, hasLegendary ? 1 : 0, hasLegendary ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'watering-50') {
+      return buildStatus(definition, manualWaterings, manualWaterings >= 50 ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'watering-100') {
+      return buildStatus(definition, manualWaterings, manualWaterings >= 100 ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'watering-500') {
+      return buildStatus(definition, manualWaterings, manualWaterings >= 500 ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'streak-30') {
+      return buildStatus(definition, longestStreak, getStreakUnlockTimestamp(items, 30))
+    }
+
+    if (definition.id === 'full-garden') {
+      return buildStatus(definition, unlockedLandCount, unlockedLandCount >= 24 ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'decorator') {
+      return buildStatus(definition, ownedDecorationCount, ownedDecorationCount >= 8 ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'battle-master') {
+      return buildStatus(definition, totalBattles, totalBattles >= 50 ? toDateKey(now) : null)
+    }
+
+    if (definition.id === 'battle-legend') {
+      return buildStatus(definition, totalBattles, totalBattles >= 100 ? toDateKey(now) : null)
     }
 
     return buildStatus(definition, 0, null)

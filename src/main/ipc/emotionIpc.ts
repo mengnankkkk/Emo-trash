@@ -106,6 +106,11 @@ export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): vo
     return releaseService.placeDecoration(type, positionX, positionY)
   })
 
+  ipcMain.handle(emoTrashChannels.movePlacedDecoration, (_event, payload) => {
+    const { placedId, positionX, positionY } = payload
+    return releaseService.movePlacedDecoration(placedId, positionX, positionY)
+  })
+
   ipcMain.handle(emoTrashChannels.removePlacedDecoration, (_event, payload) => {
     const { placedId } = payload
     releaseService.removePlacedDecoration(placedId)

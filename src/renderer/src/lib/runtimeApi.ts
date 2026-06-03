@@ -9,6 +9,7 @@ import type {
   FlowerRarity,
   GardenItem,
   GardenLandCell,
+  MovePlacedDecorationInput,
   PickFlowerResult,
   PlaceDecorationInput,
   PlantSeedInput,
@@ -161,7 +162,8 @@ const browserPreviewApi: EmoTrashApi = {
     return {
       seedAdded: true,
       emotionTag: input.emotionTag,
-      rarity
+      rarity,
+      coinsEarned: 15 // Mock金币奖励
     }
   },
 
@@ -295,7 +297,9 @@ const browserPreviewApi: EmoTrashApi = {
       {
         releaseCount: garden.length,
         longestStreak: buildGardenGrowthSnapshot(garden, 0).longestStreakDays,
-        unlockedAchievements: achievements.achievements.filter((item) => item.unlocked).map((item) => item.id),
+        unlockedAchievements: achievements.achievements
+          .filter((item) => item.unlocked)
+          .map((item) => item.id),
         battleCount: 0
       },
       [],
@@ -313,12 +317,26 @@ const browserPreviewApi: EmoTrashApi = {
     }
   },
 
+  async movePlacedDecoration(input: MovePlacedDecorationInput) {
+    return {
+      id: input.placedId,
+      type: 'stone' as DecorationType,
+      positionX: input.positionX,
+      positionY: input.positionY,
+      placedAt: toDateKey(new Date())
+    }
+  },
+
   async removePlacedDecoration(): Promise<{ success: boolean }> {
     return { success: true }
   },
 
   async purchaseDecoration(): Promise<{ success: boolean; balance: number; message?: string }> {
-    return { success: false, balance: readBrowserCurrency(), message: '浏览器预览模式暂不支持购买装饰物' }
+    return {
+      success: false,
+      balance: readBrowserCurrency(),
+      message: '浏览器预览模式暂不支持购买装饰物'
+    }
   },
 
   async getGardenLands(): Promise<GardenLandCell[]> {
@@ -326,7 +344,11 @@ const browserPreviewApi: EmoTrashApi = {
   },
 
   async unlockGardenLand(): Promise<UnlockLandResult> {
-    return { success: false, balance: readBrowserCurrency(), message: '浏览器预览模式暂不支持解锁土地' }
+    return {
+      success: false,
+      balance: readBrowserCurrency(),
+      message: '浏览器预览模式暂不支持解锁土地'
+    }
   },
 
   async getCurrencyBalance(): Promise<CurrencyBalance> {

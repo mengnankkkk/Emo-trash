@@ -116,6 +116,7 @@ function App(): React.JSX.Element {
   )
   const [placedDecorations, setPlacedDecorations] = useState<PlacedDecoration[]>([])
   const [activeDecoration, setActiveDecoration] = useState<DecorationType | null>(null)
+  const [movingDecoration, setMovingDecoration] = useState<PlacedDecoration | null>(null)
   const [currencyBalance, setCurrencyBalance] = useState(0)
   const [coinToastAmount, setCoinToastAmount] = useState<number | null>(null)
   const [battleToast, setBattleToast] = useState<EmotionBattleMatch | null>(null)
@@ -167,7 +168,8 @@ function App(): React.JSX.Element {
     plantSeed,
     getDecorationSummary,
     purchaseDecoration,
-    placeDecoration
+    placeDecoration,
+    movePlacedDecoration
   } = useEmotionApi()
 
   const resolvePreferredDate = useCallback(
@@ -255,7 +257,9 @@ function App(): React.JSX.Element {
         }
 
         const nextGarden =
-          nextGardenResult.status === 'fulfilled' ? nextGardenResult.value : options.nextGarden ?? []
+          nextGardenResult.status === 'fulfilled'
+            ? nextGardenResult.value
+            : (options.nextGarden ?? [])
         const nextStats = nextStatsResult.status === 'fulfilled' ? nextStatsResult.value : null
         const nextGrowth = nextGrowthResult.status === 'fulfilled' ? nextGrowthResult.value : null
         const nextCalendar =
@@ -475,7 +479,17 @@ function App(): React.JSX.Element {
         window.setTimeout(() => setStatusText(defaultStatusText), 3000)
       }
 
-      setRecapData({ emotionTag, intensity: 'mild', rarity: (seedResult.rarity as any) ?? 'common' })
+      // 显示金币Toast
+      if (seedResult.coinsEarned && seedResult.coinsEarned > 0) {
+        setCoinToastAmount(seedResult.coinsEarned)
+        window.setTimeout(() => setCoinToastAmount(null), 2000)
+      }
+
+      setRecapData({
+        emotionTag,
+        intensity: 'mild',
+        rarity: (seedResult.rarity as any) ?? 'common'
+      })
     } catch (error) {
       console.error(error)
       setStatusText('快速释放失败，请稍后再试。')
@@ -509,6 +523,13 @@ function App(): React.JSX.Element {
       setDraftAnalysis(null)
       setSeedInventory(nextSeeds)
       setStatusText('释放完成，新的种子已经放进背包。')
+
+      // 显示金币Toast
+      if (seedResult.coinsEarned && seedResult.coinsEarned > 0) {
+        setCoinToastAmount(seedResult.coinsEarned)
+        window.setTimeout(() => setCoinToastAmount(null), 2000)
+      }
+
       await refreshAllPanels({ preferSelectedDate: true })
 
       window.setTimeout(() => {
@@ -534,6 +555,13 @@ function App(): React.JSX.Element {
     const result = await waterFlower(flowerId)
     if (result.success) {
       setGardenItems(result.garden)
+
+      // 显示浇水金币Toast
+      if (result.coinsEarned && result.coinsEarned > 0) {
+        setCoinToastAmount(result.coinsEarned)
+        window.setTimeout(() => setCoinToastAmount(null), 2000)
+      }
+
       void refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true }).catch(
         (error) => {
           console.error('refresh after pick failed', error)
@@ -597,10 +625,6 @@ function App(): React.JSX.Element {
         console.error('load currency balance after pick failed', error)
       }
 
-      if (result.battleMatch) {
-        setBattleToast(result.battleMatch)
-        setStatusText(`对立触发：${result.battleMatch.emotionPair.label}`)
-      }
       await refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true })
     } catch (error) {
       console.error('pick flower failed', error)
@@ -642,6 +666,12 @@ function App(): React.JSX.Element {
 
       const nextSeeds = await getSeedInventory()
       setSeedInventory(nextSeeds)
+
+      // 显示情绪对战Toast
+      if (result.battleMatch) {
+        setBattleToast(result.battleMatch)
+      }
+
       await refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true })
     } else {
       setStatusText(result.message || '播种失败。')
@@ -691,6 +721,27 @@ function App(): React.JSX.Element {
     window.setTimeout(() => setStatusText(defaultStatusText), 2000)
   }
 
+  const handleSelectDecorationToMove = (decoration: PlacedDecoration): void => {
+    setMovingDecoration(decoration)
+    setActiveDecoration(null)
+    setStatusText('点击新位置移动装饰，或再次点击装饰取消。')
+    window.setTimeout(() => setStatusText(defaultStatusText), 3000)
+  }
+
+  const handleMoveDecoration = async (gridX: number, gridY: number): Promise<void> => {
+    if (!movingDecoration) return
+
+    await movePlacedDecoration({
+      placedId: movingDecoration.id,
+      positionX: gridX,
+      positionY: gridY
+    })
+    setMovingDecoration(null)
+    await loadPlacedDecorations()
+    setStatusText('装饰已移动到新位置。')
+    window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+  }
+
   useEffect(() => {
     loadGardenLands()
     loadCurrencyBalance()
@@ -717,13 +768,17 @@ function App(): React.JSX.Element {
             EMO-TRASH
           </span>
           <span className="game-hud-stat">
-            金币 <span className="game-hud-stat-value" style={{ color: '#ffa726' }}>{currencyBalance}</span>
+            金币{' '}
+            <span className="game-hud-stat-value" style={{ color: '#ffa726' }}>
+              {currencyBalance}
+            </span>
           </span>
           <span className="game-hud-stat">
             花朵 <span className="game-hud-stat-value">{gardenItems.length}</span>
           </span>
           <span className="game-hud-stat">
-            连续 <span className="game-hud-stat-value">{growthSnapshot?.currentStreakDays ?? 0}天</span>
+            连续{' '}
+            <span className="game-hud-stat-value">{growthSnapshot?.currentStreakDays ?? 0}天</span>
           </span>
           <span className="game-hud-stat">
             浇水{' '}
@@ -1014,6 +1069,7 @@ function App(): React.JSX.Element {
             lands={gardenLands}
             placedDecorations={placedDecorations}
             activeDecoration={activeDecoration}
+            movingDecoration={movingDecoration}
             growthSnapshot={growthSnapshot}
             activeSeed={activeSeed}
             onWaterFlower={handleWaterFlower}
@@ -1021,6 +1077,8 @@ function App(): React.JSX.Element {
             onUnlockLand={handleUnlockLand}
             onPlantSeed={handlePlantSeed}
             onPlaceDecoration={handlePlaceDecoration}
+            onMoveDecoration={handleMoveDecoration}
+            onSelectDecorationToMove={handleSelectDecorationToMove}
             wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0}
           />
         </section>

@@ -130,6 +130,40 @@ export class DecorationBattleRepository {
   }
 
   /**
+   * 移动已放置的装饰物
+   */
+  movePlacedDecoration(placedId: number, positionX: number, positionY: number): PlacedDecoration {
+    // 获取装饰物信息
+    const placed = this.database
+      .prepare(
+        `
+        SELECT pd.id, pd.decoration_id, d.type
+        FROM placed_decoration pd
+        JOIN decoration d ON pd.decoration_id = d.id
+        WHERE pd.id = ?
+      `
+      )
+      .get(placedId) as PlacedDecorationRow | undefined
+
+    if (!placed) {
+      throw new Error(`Placed decoration ${placedId} not found`)
+    }
+
+    // 更新位置
+    this.database
+      .prepare('UPDATE placed_decoration SET position_x = ?, position_y = ? WHERE id = ?')
+      .run(positionX, positionY, placedId)
+
+    return {
+      id: placedId,
+      type: placed.type as DecorationType,
+      positionX,
+      positionY,
+      placedAt: placed.placed_at
+    }
+  }
+
+  /**
    * 记录情绪对抗匹配
    */
   recordEmotionBattle(match: EmotionBattleMatch): void {

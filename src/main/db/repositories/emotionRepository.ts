@@ -138,16 +138,23 @@ export class EmotionRepository {
     this.database.prepare(`UPDATE digital_garden SET picked_on = ? WHERE id = ?`).run(dateKey, flowerId)
   }
 
-  recordWatering(flowerId: number, source: 'release' | 'manual', dateKey: string): void {
+  recordWatering(
+    flowerId: number,
+    source: 'release' | 'manual',
+    dateKey: string,
+    growthMultiplier = 1.0
+  ): void {
     this.database
       .prepare(`INSERT INTO watering_log (flower_id, watered_on, source) VALUES (?, ?, ?)`)
       .run(flowerId, dateKey, source)
 
+    // 应用成长速度加成
+    const wateringIncrement = Math.ceil(1 * growthMultiplier)
     this.database
       .prepare(
-        `UPDATE digital_garden SET total_waterings = total_waterings + 1, last_watered_on = ? WHERE id = ?`
+        `UPDATE digital_garden SET total_waterings = total_waterings + ?, last_watered_on = ? WHERE id = ?`
       )
-      .run(dateKey, flowerId)
+      .run(wateringIncrement, dateKey, flowerId)
   }
 
   getManualWateringCountToday(dateKey: string): number {

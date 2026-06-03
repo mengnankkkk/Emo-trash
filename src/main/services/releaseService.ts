@@ -56,9 +56,9 @@ import { SeedInventoryRepository } from '../db/repositories/seedInventoryReposit
 const DAILY_MANUAL_WATERING_LIMIT = 1
 
 const rarityRewardMap: Record<FlowerRarity, number> = {
-  common: 10,
-  shiny: 25,
-  stellar: 50,
+  common: 5,
+  shiny: 15,
+  stellar: 30,
   legendary: 100
 }
 
@@ -81,18 +81,44 @@ export class ReleaseService {
 
   releaseEmotion(input: ReleaseEmotionInput): ReleaseEmotionResult {
     const emotionTag = input.emotionTag
-    const rarity = ((input as { rarity?: FlowerRarity }).rarity ?? determineRarity()) as FlowerRarity
+    const emotionIntensity = input.analysis?.emotionIntensity ?? 'moderate'
 
+    // 获取装饰加成
+    const decorationBonus = calculateDecorationBonus(
+      this.decorationBattleRepository.getPlacedDecorations()
+    )
+
+    // 应用稀有度加成到随机值
+    const baseRandom = Math.random()
+    const rarityBoostedRandom = Math.max(0, baseRandom - decorationBonus.rarityBonus)
+    const rarity = ((input as { rarity?: FlowerRarity }).rarity ??
+      determineRarity(rarityBoostedRandom)) as FlowerRarity
+
+    // 添加种子到背包
     this.seedInventoryRepository.addSeed(emotionTag, rarity)
+
+    // 根据情绪强度发放金币
+    const intensityCoins = emotionIntensity === 'mild' ? 5 : emotionIntensity === 'strong' ? 20 : 10
+    // 根据稀有度发放额外金币
+    const rarityBonus = rarityRewardMap[rarity] ?? 0
+    const totalCoins = intensityCoins + rarityBonus
+
+    this.currencyRepository.addCurrency(totalCoins, `释放${emotionTag}情绪`)
 
     return {
       seedAdded: true,
       emotionTag,
-      rarity
+      rarity,
+      coinsEarned: totalCoins
     }
   }
 
-  plantSeed(emotionTag: string, rarity: FlowerRarity, gridX: number, gridY: number): PlantSeedResult {
+  plantSeed(
+    emotionTag: string,
+    rarity: FlowerRarity,
+    gridX: number,
+    gridY: number
+  ): PlantSeedResult {
     if (this.emotionRepository.isGridOccupied(gridX, gridY)) {
       return {
         success: false,
@@ -146,7 +172,9 @@ export class ReleaseService {
       }
     )
 
-    const recentFlowers = this.listGarden().filter((item) => item.id !== plantedFlower.id).slice(0, 9)
+    const recentFlowers = this.listGarden()
+      .filter((item) => item.id !== plantedFlower.id)
+      .slice(0, 9)
     const battleMatch = checkBattleTrigger(plantedFlower, recentFlowers, 24)
 
     if (battleMatch) {
@@ -177,11 +205,23 @@ export class ReleaseService {
       return { success: false, remaining: 0, garden: this.listGarden() }
     }
 
-    this.emotionRepository.recordWatering(flowerId, 'manual', dateKey)
+    // 获取装饰加成
+    const decorationBonus = calculateDecorationBonus(
+      this.decorationBattleRepository.getPlacedDecorations()
+    )
+    const growthMultiplier = 1.0 + decorationBonus.growthBonus
+
+    this.emotionRepository.recordWatering(flowerId, 'manual', dateKey, growthMultiplier)
+
+    // 手动浇水奖励金币
+    const wateringReward = 3
+    this.currencyRepository.addCurrency(wateringReward, '手动浇水')
+
     return {
       success: true,
       remaining: remaining - 1,
-      garden: this.listGarden()
+      garden: this.listGarden(),
+      coinsEarned: wateringReward
     }
   }
 
@@ -191,7 +231,9 @@ export class ReleaseService {
 
   getDecorationSummary(): DecorationSummary {
     const items = this.getEnrichedItems()
-    const achievements = buildAchievementSummary(items)
+    const unlockedLandCount = this.gardenLandRepository.getUnlockedCount()
+    const ownedDecorationCount = this.decorationBattleRepository.getOwnedDecorations().length
+    const achievements = buildAchievementSummary(items, unlockedLandCount, ownedDecorationCount)
     const battleCount = this.decorationBattleRepository.getEmotionBattleCount()
 
     const stats = {
@@ -212,18 +254,37 @@ export class ReleaseService {
     return this.decorationBattleRepository.placeDecoration(type, positionX, positionY)
   }
 
-  purchaseDecoration(type: DecorationType): { success: boolean; message?: string; balance: number } {
+  movePlacedDecoration(placedId: number, positionX: number, positionY: number): PlacedDecoration {
+    return this.decorationBattleRepository.movePlacedDecoration(placedId, positionX, positionY)
+  }
+
+  purchaseDecoration(type: DecorationType): {
+    success: boolean
+    message?: string
+    balance: number
+  } {
     const definition = decorationDefinitions.find((item) => item.type === type)
     if (!definition) {
-      return { success: false, message: '装饰物不存在', balance: this.currencyRepository.getBalance() }
+      return {
+        success: false,
+        message: '装饰物不存在',
+        balance: this.currencyRepository.getBalance()
+      }
     }
 
     const owned = this.decorationBattleRepository.getOwnedDecorations()
     if (owned.includes(type)) {
-      return { success: false, message: '已拥有该装饰物', balance: this.currencyRepository.getBalance() }
+      return {
+        success: false,
+        message: '已拥有该装饰物',
+        balance: this.currencyRepository.getBalance()
+      }
     }
 
-    const result = this.currencyRepository.spendCurrency(definition.price, `购买装饰物 ${definition.label}`)
+    const result = this.currencyRepository.spendCurrency(
+      definition.price,
+      `购买装饰物 ${definition.label}`
+    )
     if (!result) {
       return { success: false, message: '金币不足', balance: this.currencyRepository.getBalance() }
     }
@@ -291,7 +352,9 @@ export class ReleaseService {
   }
 
   getAchievements(): AchievementSummary {
-    return buildAchievementSummary(this.getEnrichedItems())
+    const unlockedLandCount = this.gardenLandRepository.getUnlockedCount()
+    const ownedDecorationCount = this.decorationBattleRepository.getOwnedDecorations().length
+    return buildAchievementSummary(this.getEnrichedItems(), unlockedLandCount, ownedDecorationCount)
   }
 
   getFlowerDex(): FlowerDexSummary {
@@ -333,7 +396,8 @@ export class ReleaseService {
   }
 
   private getDecorationWateringBonus(): number {
-    return calculateDecorationBonus(this.decorationBattleRepository.getPlacedDecorations()).wateringBonus
+    return calculateDecorationBonus(this.decorationBattleRepository.getPlacedDecorations())
+      .wateringBonus
   }
 
   private getEnrichedItems(): GardenItem[] {

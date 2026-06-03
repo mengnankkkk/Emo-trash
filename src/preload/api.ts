@@ -25,6 +25,7 @@ export const emoTrashChannels = {
   getEmotionBattleStats: 'emotion:battle-stats',
   getDecorationSummary: 'decoration:summary',
   placeDecoration: 'decoration:place',
+  movePlacedDecoration: 'decoration:move',
   removePlacedDecoration: 'decoration:remove',
   purchaseDecoration: 'decoration:purchase',
   getGardenLands: 'garden:lands',
@@ -121,7 +122,8 @@ export const pickFlowerInputSchema = z.object({
 export const waterFlowerResultSchema = z.object({
   success: z.boolean(),
   remaining: z.number().int().min(0).max(1),
-  garden: z.array(gardenItemSchema)
+  garden: z.array(gardenItemSchema),
+  coinsEarned: z.number().int().nonnegative().optional()
 })
 
 export const pickFlowerResultSchema = z.object({
@@ -162,7 +164,8 @@ export const seedInventoryItemSchema = z.object({
 export const releaseEmotionResultSchema = z.object({
   seedAdded: z.boolean(),
   emotionTag: emotionTagSchema,
-  rarity: raritySchema
+  rarity: raritySchema,
+  coinsEarned: z.number().int().nonnegative()
 })
 
 export const plantSeedInputSchema = z.object({
@@ -175,7 +178,10 @@ export const plantSeedInputSchema = z.object({
 export const plantSeedResultSchema = z.object({
   success: z.boolean(),
   garden: z.array(gardenItemSchema),
-  battleMatch: z.lazy(() => emotionBattleMatchSchema).nullable().optional(),
+  battleMatch: z
+    .lazy(() => emotionBattleMatchSchema)
+    .nullable()
+    .optional(),
   message: z.string().optional()
 })
 
@@ -332,6 +338,12 @@ export const placeDecorationInputSchema = z.object({
   positionY: z.number()
 })
 
+export const movePlacedDecorationInputSchema = z.object({
+  placedId: z.number().int().positive(),
+  positionX: z.number(),
+  positionY: z.number()
+})
+
 export const removePlacedDecorationInputSchema = z.object({
   placedId: z.number().int().positive()
 })
@@ -380,6 +392,7 @@ export type PlacedDecoration = z.infer<typeof placedDecorationSchema>
 export type DecorationStatus = z.infer<typeof decorationStatusSchema>
 export type DecorationSummary = z.infer<typeof decorationSummarySchema>
 export type PlaceDecorationInput = z.infer<typeof placeDecorationInputSchema>
+export type MovePlacedDecorationInput = z.infer<typeof movePlacedDecorationInputSchema>
 export type RemovePlacedDecorationInput = z.infer<typeof removePlacedDecorationInputSchema>
 export type PurchaseDecorationInput = z.infer<typeof purchaseDecorationInputSchema>
 export type PurchaseDecorationResult = z.infer<typeof purchaseDecorationResultSchema>
@@ -416,6 +429,7 @@ export interface EmoTrashApi {
   getEmotionBattleStats(): Promise<EmotionBattleStats>
   getDecorationSummary(): Promise<DecorationSummary>
   placeDecoration(input: PlaceDecorationInput): Promise<PlacedDecoration>
+  movePlacedDecoration(input: MovePlacedDecorationInput): Promise<PlacedDecoration>
   removePlacedDecoration(input: RemovePlacedDecorationInput): Promise<{ success: boolean }>
   purchaseDecoration(input: PurchaseDecorationInput): Promise<PurchaseDecorationResult>
   getGardenLands(): Promise<GardenLandCell[]>
