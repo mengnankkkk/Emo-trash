@@ -10,6 +10,7 @@ import type {
   ReleaseEmotionInput,
   ShakeWindowInput,
   PlaceDecorationInput,
+  MovePlacedDecorationInput,
   PurchaseDecorationInput,
   RemovePlacedDecorationInput
 } from './api'
@@ -69,6 +70,9 @@ const api: EmoTrashApi = {
   },
   placeDecoration(input: PlaceDecorationInput) {
     return ipcRenderer.invoke(emoTrashChannels.placeDecoration, input)
+  },
+  movePlacedDecoration(input: MovePlacedDecorationInput) {
+    return ipcRenderer.invoke(emoTrashChannels.movePlacedDecoration, input)
   },
   removePlacedDecoration(input: RemovePlacedDecorationInput) {
     return ipcRenderer.invoke(emoTrashChannels.removePlacedDecoration, input)

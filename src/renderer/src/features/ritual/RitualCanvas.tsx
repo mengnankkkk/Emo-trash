@@ -65,6 +65,28 @@ function destroyContainerChildren(container: Container): void {
   })
 }
 
+function destroyPixiApp(app: Application): void {
+  const canvas = app.canvas
+
+  try {
+    if (canvas.parentElement) {
+      canvas.parentElement.removeChild(canvas)
+    }
+  } catch (error) {
+    console.warn('RitualCanvas canvas cleanup skipped', error)
+  }
+
+  app.destroy(false)
+}
+
+function removeTicker(app: Application, ticker: (time: { deltaTime: number }) => void): void {
+  try {
+    app.ticker?.remove(ticker)
+  } catch (error) {
+    console.warn('RitualCanvas ticker cleanup skipped', error)
+  }
+}
+
 function findAlphaBounds(
   pixels: Uint8ClampedArray,
   width: number,
@@ -346,7 +368,7 @@ function RitualCanvas({
       app.renderer.resolution = 1
 
       if (!mounted) {
-        app.destroy(true)
+        destroyPixiApp(app)
         return
       }
 
@@ -372,7 +394,9 @@ function RitualCanvas({
       shatterLayerRef.current?.removeChildren()
       generatedTextureRef.current?.destroy(true)
       generatedTextureRef.current = null
-      appRef.current?.destroy(true)
+      if (appRef.current) {
+        destroyPixiApp(appRef.current)
+      }
       appRef.current = null
       previewLayerRef.current = null
       shatterLayerRef.current = null
@@ -674,7 +698,7 @@ function RitualCanvas({
     app.ticker.add(ticker)
 
     return () => {
-      app.ticker.remove(ticker)
+      removeTicker(app, ticker)
       destroyContainerChildren(previewLayer)
       destroyContainerChildren(shatterLayer)
       generatedTextureRef.current?.destroy(true)

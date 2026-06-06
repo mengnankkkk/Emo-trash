@@ -26,7 +26,12 @@ import type {
   PlantSeedInput,
   PlantSeedResult
 } from '../types/emotion'
-import type { ReleaseEmotionInput, DecorationType, PlacedDecoration } from '../../../preload/api'
+import type {
+  ReleaseEmotionInput,
+  DecorationType,
+  MovePlacedDecorationInput,
+  PlacedDecoration
+} from '../../../preload/api'
 import { getRuntimeApi } from '../lib/runtimeApi'
 
 export function useEmotionApi(): {
@@ -55,6 +60,7 @@ export function useEmotionApi(): {
   getDecorationSummary: () => Promise<DecorationSummary>
   purchaseDecoration: (type: DecorationType) => Promise<PurchaseDecorationResult>
   placeDecoration: (input: PlaceDecorationInput) => Promise<PlacedDecoration>
+  movePlacedDecoration: (input: MovePlacedDecorationInput) => Promise<PlacedDecoration>
 } {
   const analyzeEmotion = useCallback(async (text: string): Promise<ReleaseEmotionInput> => {
     const input: EmotionAnalysisInput = { text }
@@ -151,6 +157,10 @@ export function useEmotionApi(): {
     return getRuntimeApi().placeDecoration(input)
   }, [])
 
+  const movePlacedDecoration = useCallback((input: MovePlacedDecorationInput) => {
+    return getRuntimeApi().movePlacedDecoration(input)
+  }, [])
+
   return {
     analyzeEmotion,
     releaseEmotion,
@@ -173,6 +183,7 @@ export function useEmotionApi(): {
     plantSeed,
     getDecorationSummary,
     purchaseDecoration,
-    placeDecoration
+    placeDecoration,
+    movePlacedDecoration
   }
 }

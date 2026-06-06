@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { DecorationStatus, DecorationSummary, DecorationType } from '../../../../preload/api'
+import { getDecorationDefinition } from '../../../../shared/gardenDecoration'
 import { getRuntimeApi } from '../../lib/runtimeApi'
 
 interface DecorationShopProps {
@@ -7,17 +8,6 @@ interface DecorationShopProps {
   onPurchase: (type: DecorationType) => Promise<void>
   onPlace: (type: DecorationType) => void
   activeDecoration: DecorationType | null
-}
-
-const decorationPrices: Record<string, number> = {
-  stone: 50,
-  fence: 80,
-  fountain: 200,
-  'rainbow-gate': 500,
-  'wind-chime': 150,
-  lantern: 120,
-  bench: 180,
-  statue: 300
 }
 
 const decorationPixelIcon: Record<string, string> = {
@@ -153,9 +143,21 @@ function DecorationShopCard({
   onPurchase: () => Promise<void>
   onPlace: () => void
 }): React.JSX.Element {
-  const price = decorationPrices[decoration.type] ?? 100
+  const price = getDecorationDefinition(decoration.type).price
   const canAfford = balance >= price
   const isLocked = !decoration.unlocked && !decoration.owned
+  const missingCoins = Math.max(0, price - balance)
+  const progressPercent =
+    decoration.unlockTarget > 0
+      ? Math.round((decoration.unlockProgress / decoration.unlockTarget) * 100)
+      : 0
+  const buttonLabel = decoration.owned
+    ? '放置'
+    : isLocked
+      ? decoration.unlockHint
+      : canAfford
+        ? `购买 G ${price}`
+        : `还差 ${missingCoins} 金币`
 
   return (
     <div
@@ -188,6 +190,28 @@ function DecorationShopCard({
       <span className="text-[10px] font-bold tracking-[0.05em] text-[var(--text-primary)]">
         {decoration.label}
       </span>
+      <p className="min-h-8 text-center text-[9px] leading-4 text-[var(--text-muted)]">
+        {decoration.unlockLabel}
+      </p>
+      {!decoration.unlocked && (
+        <div className="w-full space-y-1">
+          <div className="flex items-center justify-between text-[8px] text-[var(--text-muted)]">
+            <span>{decoration.unlockHint}</span>
+            <span>
+              {decoration.unlockProgress}/{decoration.unlockTarget} {decoration.unlockUnit}
+            </span>
+          </div>
+          <div className="pixel-progress !h-2">
+            <div
+              className="pixel-progress-fill bg-[var(--border-primary)]"
+              style={{ width: `${Math.min(100, progressPercent)}%` }}
+            />
+          </div>
+        </div>
+      )}
+      {decoration.unlocked && !decoration.owned && (
+        <span className="text-[9px] font-semibold text-[var(--accent-emerald)]">已解锁</span>
+      )}
 
       {decoration.owned ? (
         <button
@@ -196,7 +220,7 @@ function DecorationShopCard({
           className="mt-1 rounded-[2px] border-2 border-[var(--accent-emerald)] bg-transparent px-2 py-0.5 text-[9px] font-bold tracking-[0.08em] text-[var(--accent-emerald)] transition-transform hover:translate-y-[-1px]"
           style={{ boxShadow: '2px 2px 0 color-mix(in srgb, var(--accent-emerald) 40%, transparent)' }}
         >
-          放置
+          {buttonLabel}
         </button>
       ) : (
         <button
@@ -216,7 +240,7 @@ function DecorationShopCard({
                 : '1px 1px 0 var(--pixel-shadow)'
           }}
         >
-          G {price}
+          {buttonLabel}
         </button>
       )}
     </div>

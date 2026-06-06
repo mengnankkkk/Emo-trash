@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AchievementSummary,
   DecorationType,
+  DecorationSummary,
   EmotionCalendarDay,
   EmotionIntensity,
   EmotionStatsSummary,
@@ -46,6 +47,7 @@ import {
 } from '../../shared/emotionMeta'
 import { getTimeContextLabel } from '../../shared/emotionAnalysis'
 import { computeEmotionWeather } from '../../shared/emotionWeather'
+import { getDecorationDefinition } from '../../shared/gardenDecoration'
 
 type AppPage = 'release' | 'analytics' | 'garden' | 'achievements' | 'flowerdex' | 'battle'
 type AnalyticsTab = 'overview' | 'history'
@@ -103,6 +105,12 @@ const appPages: Array<{
   }
 ]
 
+interface NextGoal {
+  title: string
+  detail: string
+  tone: 'emerald' | 'amber' | 'sky' | 'purple'
+}
+
 function App(): React.JSX.Element {
   const [inputValue, setInputValue] = useState('')
   const [draftAnalysis, setDraftAnalysis] = useState<ReleaseEmotionInput | null>(null)
@@ -115,6 +123,7 @@ function App(): React.JSX.Element {
     null
   )
   const [placedDecorations, setPlacedDecorations] = useState<PlacedDecoration[]>([])
+  const [decorationSummary, setDecorationSummary] = useState<DecorationSummary | null>(null)
   const [activeDecoration, setActiveDecoration] = useState<DecorationType | null>(null)
   const [movingDecoration, setMovingDecoration] = useState<PlacedDecoration | null>(null)
   const [currencyBalance, setCurrencyBalance] = useState(0)
@@ -241,7 +250,8 @@ function App(): React.JSX.Element {
           nextCalendarResult,
           nextAchievementsResult,
           nextFlowerDexResult,
-          nextTitlesResult
+          nextTitlesResult,
+          nextDecorationResult
         ] = await Promise.allSettled([
           options.nextGarden ? Promise.resolve(options.nextGarden) : listGarden(),
           getEmotionStats(7),
@@ -249,7 +259,8 @@ function App(): React.JSX.Element {
           listEmotionCalendar(30, emotionFilter),
           getAchievements(),
           getFlowerDex(),
-          getTitles()
+          getTitles(),
+          getDecorationSummary()
         ])
 
         if (requestId !== refreshRequestIdRef.current) {
@@ -269,6 +280,8 @@ function App(): React.JSX.Element {
         const nextFlowerDex =
           nextFlowerDexResult.status === 'fulfilled' ? nextFlowerDexResult.value : null
         const nextTitles = nextTitlesResult.status === 'fulfilled' ? nextTitlesResult.value : null
+        const nextDecorations =
+          nextDecorationResult.status === 'fulfilled' ? nextDecorationResult.value : null
 
         setGardenItems(nextGarden)
         setStatsSummary(nextStats)
@@ -277,6 +290,10 @@ function App(): React.JSX.Element {
         setAchievementSummary(nextAchievements)
         setFlowerDexSummary(nextFlowerDex)
         setTitleSummary(nextTitles)
+        setDecorationSummary(nextDecorations)
+        if (nextDecorations) {
+          setPlacedDecorations(nextDecorations.placed)
+        }
 
         if (nextAchievements) {
           const newlyUnlocked = nextAchievements.recentlyUnlocked.filter(
@@ -332,6 +349,7 @@ function App(): React.JSX.Element {
       getFlowerDex,
       getGardenGrowth,
       getTitles,
+      getDecorationSummary,
       listEmotionCalendar,
       listEmotionTimeline,
       listGarden,
@@ -421,6 +439,95 @@ function App(): React.JSX.Element {
   }, [gardenItems])
 
   const currentWeather = useMemo(() => computeEmotionWeather(gardenItems), [gardenItems])
+
+  const nextGoals = useMemo<NextGoal[]>(() => {
+    const goals: NextGoal[] = []
+    const totalSeeds = seedInventory.reduce((sum, seed) => sum + seed.quantity, 0)
+    const remainingWaterings = growthSnapshot?.manualWateringsRemaining ?? 0
+    const lockedLandCount = gardenLands.filter((land) => !land.unlocked).length
+    const landUnlockPrice = 100
+
+    if (totalSeeds > 0) {
+      goals.push({
+        title: '播种背包种子',
+        detail: `背包里还有 ${totalSeeds} 颗种子，去花园选择空地播下。`,
+        tone: 'emerald'
+      })
+    }
+
+    if (remainingWaterings > 0 && gardenItems.length > 0) {
+      goals.push({
+        title: '照料今日花园',
+        detail: `今天还可以手动浇水 ${remainingWaterings} 次。`,
+        tone: 'sky'
+      })
+    }
+
+    const nextAffordableDecoration = decorationSummary?.decorations
+      .filter((decoration) => decoration.unlocked && !decoration.owned)
+      .map((decoration) => ({
+        ...decoration,
+        price: getDecorationDefinition(decoration.type).price
+      }))
+      .sort((left, right) => left.price - right.price)[0]
+
+    if (nextAffordableDecoration) {
+      const missingCoins = Math.max(0, nextAffordableDecoration.price - currencyBalance)
+      goals.push({
+        title: nextAffordableDecoration.owned ? '放置装饰' : `解锁${nextAffordableDecoration.label}`,
+        detail:
+          missingCoins === 0
+            ? `金币足够，去图鉴购买 ${nextAffordableDecoration.label}。`
+            : `还差 ${missingCoins} 金币可购买 ${nextAffordableDecoration.label}。`,
+        tone: 'amber'
+      })
+    } else if (lockedLandCount > 0) {
+      const missingCoins = Math.max(0, landUnlockPrice - currencyBalance)
+      goals.push({
+        title: '扩建花园地块',
+        detail:
+          missingCoins === 0
+            ? '金币足够，去花园解锁一块新土地。'
+            : `还差 ${missingCoins} 金币可解锁下一块土地。`,
+        tone: 'amber'
+      })
+    }
+
+    const nextAchievement = achievementSummary?.achievements
+      .filter((achievement) => !achievement.unlocked && achievement.target > achievement.progress)
+      .sort(
+        (left, right) =>
+          (left.target - left.progress) / left.target -
+          (right.target - right.progress) / right.target
+      )[0]
+
+    if (nextAchievement) {
+      goals.push({
+        title: `接近成就：${nextAchievement.title}`,
+        detail: `还差 ${nextAchievement.target - nextAchievement.progress} ${nextAchievement.unit}。${nextAchievement.hint}`,
+        tone: 'purple'
+      })
+    }
+
+    if (flowerDexSummary && flowerDexSummary.unlockedCount < flowerDexSummary.totalSlots) {
+      goals.push({
+        title: '补全花朵图鉴',
+        detail: `已收集 ${flowerDexSummary.unlockedCount}/${flowerDexSummary.totalSlots}，不同情绪和稀有度会点亮新格子。`,
+        tone: 'purple'
+      })
+    }
+
+    return goals.slice(0, 3)
+  }, [
+    achievementSummary,
+    currencyBalance,
+    decorationSummary,
+    flowerDexSummary,
+    gardenItems.length,
+    gardenLands,
+    growthSnapshot?.manualWateringsRemaining,
+    seedInventory
+  ])
 
   const intensityLabelMap: Record<EmotionIntensity, string> = {
     mild: '轻微',
@@ -696,6 +803,7 @@ function App(): React.JSX.Element {
 
   const loadPlacedDecorations = async (): Promise<void> => {
     const summary = await getDecorationSummary()
+    setDecorationSummary(summary)
     setPlacedDecorations(summary.placed)
   }
 
@@ -783,7 +891,7 @@ function App(): React.JSX.Element {
           <span className="game-hud-stat">
             浇水{' '}
             <span className="game-hud-stat-value">
-              {growthSnapshot?.manualWateringsRemaining ?? 1}/1
+              {growthSnapshot?.manualWateringsRemaining ?? 1} 次
             </span>
           </span>
         </div>
@@ -822,7 +930,46 @@ function App(): React.JSX.Element {
       </nav>
 
       {activePage === 'release' ? (
-        <section className="grid flex-1 gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <section className="flex flex-1 flex-col gap-4">
+          {nextGoals.length > 0 && (
+            <div className="pixel-panel pixel-panel--cyan grid gap-3 p-4 md:grid-cols-3">
+              <div className="md:col-span-3">
+                <h2 className="text-xs font-bold tracking-widest text-[var(--accent-cyan)]">
+                  下一步目标
+                </h2>
+              </div>
+              {nextGoals.map((goal) => {
+                const color =
+                  goal.tone === 'emerald'
+                    ? 'var(--accent-emerald)'
+                    : goal.tone === 'amber'
+                      ? 'var(--accent-amber)'
+                      : goal.tone === 'sky'
+                        ? 'var(--accent-sky)'
+                        : 'var(--accent-purple)'
+
+                return (
+                  <article
+                    key={`${goal.title}-${goal.detail}`}
+                    className="rounded-[4px] border-2 bg-[var(--bg-panel)] p-3"
+                    style={{
+                      borderColor: color,
+                      boxShadow: `2px 2px 0 color-mix(in srgb, ${color} 35%, transparent)`
+                    }}
+                  >
+                    <p className="text-[11px] font-bold tracking-[0.12em]" style={{ color }}>
+                      {goal.title}
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">
+                      {goal.detail}
+                    </p>
+                  </article>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="grid flex-1 gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="pixel-panel pixel-panel--rose flex flex-col p-5">
             <div className="mb-4 flex items-center justify-between border-b-3 border-dashed border-[#e91e63]/30 pb-3">
               <h2 className="text-sm font-bold tracking-widest text-[var(--accent-rose)]">
@@ -971,6 +1118,7 @@ function App(): React.JSX.Element {
               />
             </div>
           )}
+          </div>
         </section>
       ) : null}
 

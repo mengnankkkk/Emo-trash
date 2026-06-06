@@ -25,11 +25,14 @@ function createItem(
 describe('ReleaseService', () => {
   it('释放后写入种子背包，并返回种子结果', () => {
     const addSeed = vi.fn()
-    const service = new ReleaseService({} as never, {} as never, {} as never, {
+    const addCurrency = vi.fn()
+    const serviceWithCurrency = new ReleaseService({} as never, {} as never, {
+      addCurrency
+    } as never, {
       addSeed
     } as never)
 
-    const result = service.releaseEmotion({
+    const result = serviceWithCurrency.releaseEmotion({
       textLength: 12,
       exclamationDensity: 0.25,
       emphasisLevel: 4,
@@ -40,10 +43,12 @@ describe('ReleaseService', () => {
     } as never)
 
     expect(addSeed).toHaveBeenCalledWith('collapse', 'common')
+    expect(addCurrency).toHaveBeenCalledWith(15, '释放collapse情绪')
     expect(result).toEqual({
       seedAdded: true,
       emotionTag: 'collapse',
-      rarity: 'common'
+      rarity: 'common',
+      coinsEarned: 15
     })
   })
 

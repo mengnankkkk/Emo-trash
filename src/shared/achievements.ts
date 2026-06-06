@@ -152,7 +152,7 @@ const achievementDefinitions: AchievementDefinition[] = [
     category: 'ritual',
     title: '细心园丁',
     description: '累计完成 10 次手动浇水。',
-    hint: '在花园页可以单独给花朵浇水，每天最多 3 次。',
+    hint: '在花园页可以单独给花朵浇水，基础每天 1 次，装饰可增加次数。',
     target: 10,
     unit: '次'
   },
@@ -206,7 +206,7 @@ const achievementDefinitions: AchievementDefinition[] = [
     category: 'growth',
     title: '初遇闪光',
     description: '获得首个闪光花朵。',
-    hint: '闪光花朵有 20% 的几率出现。',
+    hint: '闪光花朵基础概率为 12%，装饰和情绪调和可提升稀有概率。',
     target: 1,
     unit: '朵'
   },
@@ -215,7 +215,7 @@ const achievementDefinitions: AchievementDefinition[] = [
     category: 'growth',
     title: '星辰降临',
     description: '获得首个星光花朵。',
-    hint: '星光花朵有 5% 的几率出现。',
+    hint: '星光花朵基础概率为 2.5%，装饰和情绪调和可提升稀有概率。',
     target: 1,
     unit: '朵'
   },
@@ -224,7 +224,7 @@ const achievementDefinitions: AchievementDefinition[] = [
     category: 'growth',
     title: '传说诞生',
     description: '获得首个传说花朵。',
-    hint: '传说花朵有 1% 的几率出现，需要运气和坚持。',
+    hint: '传说花朵基础概率为 0.5%，需要一点运气，也可通过加成提高机会。',
     target: 1,
     unit: '朵'
   },

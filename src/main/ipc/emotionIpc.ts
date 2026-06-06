@@ -38,6 +38,7 @@ export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): vo
     decorationBattleRepository,
     currencyRepository,
     seedInventoryRepository,
+    gardenLandRepository,
     emotionAnalysisService
   )
   const windowEffectService = new WindowEffectService()

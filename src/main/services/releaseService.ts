@@ -51,9 +51,11 @@ import { EmotionAnalysisService } from './emotionAnalysisService'
 import { DecorationBattleRepository } from '../db/repositories/decorationBattleRepository'
 import { CurrencyRepository } from '../db/repositories/currencyRepository'
 import { EmotionRepository } from '../db/repositories/emotionRepository'
+import { GardenLandRepository } from '../db/repositories/gardenLandRepository'
 import { SeedInventoryRepository } from '../db/repositories/seedInventoryRepository'
 
 const DAILY_MANUAL_WATERING_LIMIT = 1
+const MAX_RARITY_BONUS = 0.25
 
 const rarityRewardMap: Record<FlowerRarity, number> = {
   common: 5,
@@ -68,6 +70,7 @@ export class ReleaseService {
     private readonly decorationBattleRepository: DecorationBattleRepository,
     private readonly currencyRepository: CurrencyRepository,
     private readonly seedInventoryRepository: SeedInventoryRepository,
+    private readonly gardenLandRepository?: GardenLandRepository,
     private readonly emotionAnalysisService?: EmotionAnalysisService
   ) {}
 
@@ -83,16 +86,8 @@ export class ReleaseService {
     const emotionTag = input.emotionTag
     const emotionIntensity = input.analysis?.emotionIntensity ?? 'moderate'
 
-    // 获取装饰加成
-    const decorationBonus = calculateDecorationBonus(
-      this.decorationBattleRepository.getPlacedDecorations()
-    )
-
-    // 应用稀有度加成到随机值
-    const baseRandom = Math.random()
-    const rarityBoostedRandom = Math.max(0, baseRandom - decorationBonus.rarityBonus)
     const rarity = ((input as { rarity?: FlowerRarity }).rarity ??
-      determineRarity(rarityBoostedRandom)) as FlowerRarity
+      determineRarity(Math.random(), this.getActiveRarityBonus())) as FlowerRarity
 
     // 添加种子到背包
     this.seedInventoryRepository.addSeed(emotionTag, rarity)
@@ -100,8 +95,8 @@ export class ReleaseService {
     // 根据情绪强度发放金币
     const intensityCoins = emotionIntensity === 'mild' ? 5 : emotionIntensity === 'strong' ? 20 : 10
     // 根据稀有度发放额外金币
-    const rarityBonus = rarityRewardMap[rarity] ?? 0
-    const totalCoins = intensityCoins + rarityBonus
+    const rarityCoins = rarityRewardMap[rarity] ?? 0
+    const totalCoins = intensityCoins + rarityCoins
 
     this.currencyRepository.addCurrency(totalCoins, `释放${emotionTag}情绪`)
 
@@ -231,16 +226,20 @@ export class ReleaseService {
 
   getDecorationSummary(): DecorationSummary {
     const items = this.getEnrichedItems()
-    const unlockedLandCount = this.gardenLandRepository.getUnlockedCount()
+    const unlockedLandCount = this.gardenLandRepository?.getUnlockedCount() ?? 0
     const ownedDecorationCount = this.decorationBattleRepository.getOwnedDecorations().length
     const achievements = buildAchievementSummary(items, unlockedLandCount, ownedDecorationCount)
+    const titles = buildTitleSummary(items)
     const battleCount = this.decorationBattleRepository.getEmotionBattleCount()
 
     const stats = {
       releaseCount: items.length,
       longestStreak: buildGardenGrowthSnapshot(items, 0, new Date()).longestStreakDays,
       unlockedAchievements: achievements.achievements.filter((a) => a.unlocked).map((a) => a.id),
-      battleCount
+      unlockedTitles: titles.titles.filter((title) => title.unlocked).map((title) => title.id),
+      battleCount,
+      achievementStatuses: achievements.achievements,
+      titleStatuses: titles.titles
     }
 
     return buildDecorationSummary(
@@ -277,6 +276,16 @@ export class ReleaseService {
       return {
         success: false,
         message: '已拥有该装饰物',
+        balance: this.currencyRepository.getBalance()
+      }
+    }
+
+    const summary = this.getDecorationSummary()
+    const status = summary.decorations.find((item) => item.type === type)
+    if (!status?.unlocked) {
+      return {
+        success: false,
+        message: '装饰物尚未解锁',
         balance: this.currencyRepository.getBalance()
       }
     }
@@ -352,7 +361,7 @@ export class ReleaseService {
   }
 
   getAchievements(): AchievementSummary {
-    const unlockedLandCount = this.gardenLandRepository.getUnlockedCount()
+    const unlockedLandCount = this.gardenLandRepository?.getUnlockedCount() ?? 0
     const ownedDecorationCount = this.decorationBattleRepository.getOwnedDecorations().length
     return buildAchievementSummary(this.getEnrichedItems(), unlockedLandCount, ownedDecorationCount)
   }
@@ -398,6 +407,15 @@ export class ReleaseService {
   private getDecorationWateringBonus(): number {
     return calculateDecorationBonus(this.decorationBattleRepository.getPlacedDecorations())
       .wateringBonus
+  }
+
+  private getActiveRarityBonus(): number {
+    const decorationBonus = calculateDecorationBonus(
+      this.decorationBattleRepository.getPlacedDecorations()
+    ).rarityBonus
+    const battleBonus = buildEmotionBattleStats(this.getEnrichedItems()).totalRarityBoost
+
+    return Math.min(MAX_RARITY_BONUS, decorationBonus + battleBonus)
   }
 
   private getEnrichedItems(): GardenItem[] {

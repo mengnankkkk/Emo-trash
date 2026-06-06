@@ -50,6 +50,11 @@ export interface DecorationStatus {
   description: string
   unlocked: boolean
   owned: boolean
+  unlockLabel: string
+  unlockHint: string
+  unlockProgress: number
+  unlockTarget: number
+  unlockUnit: string
   bonus: {
     type: string
     value: number | string
@@ -57,6 +62,21 @@ export interface DecorationStatus {
   }
   emoji: string
   colorHex: string
+}
+
+interface AchievementProgressStatus {
+  id: string
+  title: string
+  progress: number
+  target: number
+  unit: string
+  unlocked: boolean
+}
+
+interface TitleProgressStatus {
+  id: string
+  label: string
+  unlocked: boolean
 }
 
 export interface DecorationSummary {
@@ -174,6 +194,7 @@ export function isDecorationUnlocked(
     releaseCount: number
     longestStreak: number
     unlockedAchievements: string[]
+    unlockedTitles?: string[]
     battleCount: number
   }
 ): boolean {
@@ -185,11 +206,119 @@ export function isDecorationUnlocked(
     case 'streak':
       return stats.longestStreak >= (unlockCondition.value as number)
     case 'achievement':
-      return stats.unlockedAchievements.includes(unlockCondition.value as string)
+      return (
+        stats.unlockedAchievements.includes(unlockCondition.value as string) ||
+        (stats.unlockedTitles?.includes(unlockCondition.value as string) ?? false)
+      )
     case 'battle':
       return stats.battleCount >= (unlockCondition.value as number)
     default:
       return false
+  }
+}
+
+function getMissingText(current: number, target: number, unit: string): string {
+  const missing = Math.max(0, target - current)
+  return missing === 0 ? '条件已达成' : `还差 ${missing} ${unit}`
+}
+
+function getTitleMissingText(title: TitleProgressStatus): string {
+  if (title.unlocked) {
+    return '称号已获得'
+  }
+
+  if (title.id === 'legend-hunter') {
+    return '还未获得传说花'
+  }
+
+  return `还未获得${title.label}称号`
+}
+
+function buildUnlockRequirement(
+  definition: DecorationDefinition,
+  stats: {
+    releaseCount: number
+    longestStreak: number
+    unlockedAchievements: string[]
+    unlockedTitles?: string[]
+    battleCount: number
+    achievementStatuses?: AchievementProgressStatus[]
+    titleStatuses?: TitleProgressStatus[]
+  }
+): Pick<
+  DecorationStatus,
+  'unlockLabel' | 'unlockHint' | 'unlockProgress' | 'unlockTarget' | 'unlockUnit'
+> {
+  const { unlockCondition } = definition
+
+  if (unlockCondition.type === 'release-count') {
+    const target = unlockCondition.value as number
+    return {
+      unlockLabel: `需要释放 ${target} 次`,
+      unlockHint: getMissingText(stats.releaseCount, target, '次释放'),
+      unlockProgress: Math.min(stats.releaseCount, target),
+      unlockTarget: target,
+      unlockUnit: '次'
+    }
+  }
+
+  if (unlockCondition.type === 'streak') {
+    const target = unlockCondition.value as number
+    return {
+      unlockLabel: `需要连续 ${target} 天`,
+      unlockHint: getMissingText(stats.longestStreak, target, '天'),
+      unlockProgress: Math.min(stats.longestStreak, target),
+      unlockTarget: target,
+      unlockUnit: '天'
+    }
+  }
+
+  if (unlockCondition.type === 'battle') {
+    const target = unlockCondition.value as number
+    return {
+      unlockLabel: `需要情绪调和 ${target} 次`,
+      unlockHint: getMissingText(stats.battleCount, target, '次调和'),
+      unlockProgress: Math.min(stats.battleCount, target),
+      unlockTarget: target,
+      unlockUnit: '次'
+    }
+  }
+
+  const conditionId = unlockCondition.value as string
+  const achievement = stats.achievementStatuses?.find((item) => item.id === conditionId)
+  if (achievement) {
+    return {
+      unlockLabel: `需要成就：${achievement.title}`,
+      unlockHint: achievement.unlocked
+        ? '成就已达成'
+        : getMissingText(achievement.progress, achievement.target, achievement.unit),
+      unlockProgress: Math.min(achievement.progress, achievement.target),
+      unlockTarget: achievement.target,
+      unlockUnit: achievement.unit
+    }
+  }
+
+  const title = stats.titleStatuses?.find((item) => item.id === conditionId)
+  if (title) {
+    return {
+      unlockLabel: `需要称号：${title.label}`,
+      unlockHint: getTitleMissingText(title),
+      unlockProgress: title.unlocked ? 1 : 0,
+      unlockTarget: 1,
+      unlockUnit: '项'
+    }
+  }
+
+  const conditionUnlocked =
+    stats.unlockedAchievements.includes(conditionId) ||
+    (stats.unlockedTitles?.includes(conditionId) ?? false)
+
+  return {
+    unlockLabel: `需要条件：${conditionId}`,
+    unlockHint: conditionUnlocked ? '条件已达成' : '条件尚未达成',
+    unlockProgress: conditionUnlocked ? 1 : 0,
+    unlockTarget: 1,
+    unlockUnit: '项'
   }
 }
 
@@ -232,21 +361,29 @@ export function buildDecorationSummary(
     releaseCount: number
     longestStreak: number
     unlockedAchievements: string[]
+    unlockedTitles?: string[]
     battleCount: number
+    achievementStatuses?: AchievementProgressStatus[]
+    titleStatuses?: TitleProgressStatus[]
   },
   ownedDecorations: DecorationType[],
   placedDecorations: PlacedDecoration[]
 ): DecorationSummary {
-  const decorations: DecorationStatus[] = decorationDefinitions.map((def) => ({
-    type: def.type,
-    label: def.label,
-    description: def.description,
-    unlocked: isDecorationUnlocked(def, stats),
-    owned: ownedDecorations.includes(def.type),
-    bonus: def.bonus,
-    emoji: def.emoji,
-    colorHex: def.colorHex
-  }))
+  const decorations: DecorationStatus[] = decorationDefinitions.map((def) => {
+    const unlockRequirement = buildUnlockRequirement(def, stats)
+
+    return {
+      type: def.type,
+      label: def.label,
+      description: def.description,
+      unlocked: isDecorationUnlocked(def, stats),
+      owned: ownedDecorations.includes(def.type),
+      ...unlockRequirement,
+      bonus: def.bonus,
+      emoji: def.emoji,
+      colorHex: def.colorHex
+    }
+  })
 
   const unlockedCount = decorations.filter((d) => d.unlocked).length
   const activeBonus = calculateDecorationBonus(placedDecorations)

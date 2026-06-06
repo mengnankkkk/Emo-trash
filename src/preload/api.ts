@@ -106,7 +106,7 @@ export const gardenGrowthSnapshotSchema = z.object({
   recentReleaseCount: z.number().int().nonnegative(),
   totalBlooms: z.number().int().nonnegative(),
   witheredCount: z.number().int().nonnegative(),
-  manualWateringsRemaining: z.number().int().min(0).max(1),
+  manualWateringsRemaining: z.number().int().min(0),
   progressToNextLevel: z.number().min(0).max(1),
   nextLevelLabel: z.enum(['开花', '盛放']).nullable()
 })
@@ -121,7 +121,7 @@ export const pickFlowerInputSchema = z.object({
 
 export const waterFlowerResultSchema = z.object({
   success: z.boolean(),
-  remaining: z.number().int().min(0).max(1),
+  remaining: z.number().int().min(0),
   garden: z.array(gardenItemSchema),
   coinsEarned: z.number().int().nonnegative().optional()
 })
@@ -310,6 +310,11 @@ export const decorationStatusSchema = z.object({
   description: z.string(),
   unlocked: z.boolean(),
   owned: z.boolean(),
+  unlockLabel: z.string(),
+  unlockHint: z.string(),
+  unlockProgress: z.number().int().nonnegative(),
+  unlockTarget: z.number().int().nonnegative(),
+  unlockUnit: z.string(),
   bonus: z.object({
     type: z.string(),
     value: z.union([z.number(), z.string()]),

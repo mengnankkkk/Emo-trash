@@ -1,6 +1,7 @@
 import type {
   CurrencyBalance,
   CurrencyTransaction,
+  DecorationType,
   EmotionAnalysisInput,
   EmotionStatsRange,
   EmotionTag,
@@ -292,6 +293,7 @@ const browserPreviewApi: EmoTrashApi = {
   async getDecorationSummary() {
     const garden = readGarden()
     const achievements = buildAchievementSummary(garden)
+    const titles = buildTitleSummary(garden)
 
     return buildDecorationSummary(
       {
@@ -300,6 +302,9 @@ const browserPreviewApi: EmoTrashApi = {
         unlockedAchievements: achievements.achievements
           .filter((item) => item.unlocked)
           .map((item) => item.id),
+        unlockedTitles: titles.titles.filter((item) => item.unlocked).map((item) => item.id),
+        achievementStatuses: achievements.achievements,
+        titleStatuses: titles.titles,
         battleCount: 0
       },
       [],

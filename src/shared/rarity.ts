@@ -50,15 +50,64 @@ export const rarityDefinitions: Record<FlowerRarity, RarityDefinition> = {
   }
 }
 
+const nonCommonRarityValues = rarityValues.filter((rarity) => rarity !== 'common')
+
+function clampProbability(value: number): number {
+  return Math.min(1, Math.max(0, value))
+}
+
+export function getBoostedRarityDefinitions(
+  rareBonus = 0
+): Record<FlowerRarity, RarityDefinition> {
+  const normalizedBonus = clampProbability(rareBonus)
+  const baseCommonProbability = rarityDefinitions.common.probability
+  const nextCommonProbability = Math.max(0, baseCommonProbability - normalizedBonus)
+  const actualBonus = baseCommonProbability - nextCommonProbability
+  const totalRareProbability = nonCommonRarityValues.reduce(
+    (sum, rarity) => sum + rarityDefinitions[rarity].probability,
+    0
+  )
+
+  if (actualBonus <= 0 || totalRareProbability <= 0) {
+    return rarityDefinitions
+  }
+
+  return {
+    common: {
+      ...rarityDefinitions.common,
+      probability: nextCommonProbability
+    },
+    shiny: {
+      ...rarityDefinitions.shiny,
+      probability:
+        rarityDefinitions.shiny.probability +
+        actualBonus * (rarityDefinitions.shiny.probability / totalRareProbability)
+    },
+    stellar: {
+      ...rarityDefinitions.stellar,
+      probability:
+        rarityDefinitions.stellar.probability +
+        actualBonus * (rarityDefinitions.stellar.probability / totalRareProbability)
+    },
+    legendary: {
+      ...rarityDefinitions.legendary,
+      probability:
+        rarityDefinitions.legendary.probability +
+        actualBonus * (rarityDefinitions.legendary.probability / totalRareProbability)
+    }
+  }
+}
+
 /**
  * 根据随机数判定稀有度
  * 使用累积概率分布
  */
-export function determineRarity(random = Math.random()): FlowerRarity {
+export function determineRarity(random = Math.random(), rareBonus = 0): FlowerRarity {
+  const definitions = getBoostedRarityDefinitions(rareBonus)
   let cumulative = 0
 
   for (const rarity of rarityValues) {
-    cumulative += rarityDefinitions[rarity].probability
+    cumulative += definitions[rarity].probability
     if (random < cumulative) {
       return rarity
     }
