@@ -38,6 +38,8 @@ interface GridGardenViewProps {
   onPlaceDecoration?: (gridX: number, gridY: number) => void
   onMoveDecoration?: (gridX: number, gridY: number) => void
   onSelectDecorationToMove?: (decoration: PlacedDecoration) => void
+  onCancelDecorationMove?: () => void
+  onRemoveDecoration?: (placedId: number) => void
   wateringDisabled?: boolean
 }
 
@@ -56,6 +58,8 @@ function GridGardenView({
   onPlaceDecoration,
   onMoveDecoration,
   onSelectDecorationToMove,
+  onCancelDecorationMove,
+  onRemoveDecoration,
   wateringDisabled
 }: GridGardenViewProps): React.JSX.Element {
   const [activeTool, setActiveTool] = useState<'none' | 'water' | 'pick' | 'unlock'>('none')
@@ -269,6 +273,43 @@ function GridGardenView({
           解锁土地
         </button>
       </div>
+
+      {movingDecoration && (
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 rounded-[4px] border-2 border-[var(--accent-sky)] bg-[color-mix(in_srgb,var(--accent-sky)_10%,var(--bg-panel))] p-3"
+          style={{ boxShadow: '2px 2px 0 color-mix(in srgb, var(--accent-sky) 35%, transparent)' }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl" aria-hidden="true">
+              {getDecorationDefinition(movingDecoration.type).emoji}
+            </span>
+            <div>
+              <p className="text-[11px] font-bold tracking-[0.12em] text-[var(--accent-sky)]">
+                正在移动装饰
+              </p>
+              <p className="mt-1 text-[10px] text-[var(--text-secondary)]">
+                选择一块已解锁空地完成移动，或把它收回到收藏。
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-[2px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] px-3 py-1 text-[10px] font-bold tracking-[0.1em] text-[var(--text-secondary)]"
+              onClick={onCancelDecorationMove}
+            >
+              取消移动
+            </button>
+            <button
+              type="button"
+              className="rounded-[2px] border-2 border-[var(--accent-rose)] bg-[color-mix(in_srgb,var(--accent-rose)_10%,var(--bg-panel))] px-3 py-1 text-[10px] font-bold tracking-[0.1em] text-[var(--accent-rose)]"
+              onClick={() => onRemoveDecoration?.(movingDecoration.id)}
+            >
+              收回装饰
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 网格花园 */}
       <div

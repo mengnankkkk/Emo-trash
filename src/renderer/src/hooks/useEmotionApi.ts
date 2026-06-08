@@ -61,6 +61,7 @@ export function useEmotionApi(): {
   purchaseDecoration: (type: DecorationType) => Promise<PurchaseDecorationResult>
   placeDecoration: (input: PlaceDecorationInput) => Promise<PlacedDecoration>
   movePlacedDecoration: (input: MovePlacedDecorationInput) => Promise<PlacedDecoration>
+  removePlacedDecoration: (placedId: number) => Promise<{ success: boolean }>
 } {
   const analyzeEmotion = useCallback(async (text: string): Promise<ReleaseEmotionInput> => {
     const input: EmotionAnalysisInput = { text }
@@ -161,6 +162,10 @@ export function useEmotionApi(): {
     return getRuntimeApi().movePlacedDecoration(input)
   }, [])
 
+  const removePlacedDecoration = useCallback((placedId: number) => {
+    return getRuntimeApi().removePlacedDecoration({ placedId })
+  }, [])
+
   return {
     analyzeEmotion,
     releaseEmotion,
@@ -184,6 +189,7 @@ export function useEmotionApi(): {
     getDecorationSummary,
     purchaseDecoration,
     placeDecoration,
-    movePlacedDecoration
+    movePlacedDecoration,
+    removePlacedDecoration
   }
 }

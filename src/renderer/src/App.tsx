@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AchievementSummary,
+  CurrencyTransaction,
   DecorationType,
   DecorationSummary,
   EmotionCalendarDay,
@@ -111,6 +112,67 @@ interface NextGoal {
   tone: 'emerald' | 'amber' | 'sky' | 'purple'
 }
 
+function CurrencyLedger({
+  transactions,
+  balance
+}: {
+  transactions: CurrencyTransaction[]
+  balance: number
+}): React.JSX.Element {
+  return (
+    <section className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-muted)]">金币账本</p>
+          <h3 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">最近收支</h3>
+        </div>
+        <span className="rounded-[2px] border-2 border-[var(--accent-amber)] bg-[color-mix(in_srgb,var(--accent-amber)_10%,var(--bg-panel))] px-3 py-1.5 text-xs font-bold text-[var(--accent-amber)]">
+          G {balance}
+        </span>
+      </div>
+
+      {transactions.length === 0 ? (
+        <div className="mt-5 rounded-[4px] border-2 border-dashed border-[var(--border-primary)] bg-[var(--bg-panel)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+          还没有金币流水。
+        </div>
+      ) : (
+        <div className="mt-5 space-y-2">
+          {transactions.slice(0, 8).map((transaction) => {
+            const isSpend = transaction.transactionType === 'spend'
+            const amountLabel = `${isSpend ? '-' : '+'}${Math.abs(transaction.amount)}`
+            return (
+              <article
+                key={transaction.id}
+                className="flex items-center justify-between gap-3 rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-[var(--text-primary)]">
+                    {transaction.description}
+                  </p>
+                  <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                    {transaction.createdAt.split('T')[0] || transaction.createdAt}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p
+                    className="text-sm font-bold"
+                    style={{ color: isSpend ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}
+                  >
+                    {amountLabel}
+                  </p>
+                  <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                    余额 {transaction.balanceAfter}
+                  </p>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function App(): React.JSX.Element {
   const [inputValue, setInputValue] = useState('')
   const [draftAnalysis, setDraftAnalysis] = useState<ReleaseEmotionInput | null>(null)
@@ -127,6 +189,7 @@ function App(): React.JSX.Element {
   const [activeDecoration, setActiveDecoration] = useState<DecorationType | null>(null)
   const [movingDecoration, setMovingDecoration] = useState<PlacedDecoration | null>(null)
   const [currencyBalance, setCurrencyBalance] = useState(0)
+  const [currencyTransactions, setCurrencyTransactions] = useState<CurrencyTransaction[]>([])
   const [coinToastAmount, setCoinToastAmount] = useState<number | null>(null)
   const [battleToast, setBattleToast] = useState<EmotionBattleMatch | null>(null)
   const [ritualActive, setRitualActive] = useState(false)
@@ -173,12 +236,14 @@ function App(): React.JSX.Element {
     getGardenLands,
     unlockGardenLand,
     getCurrencyBalance,
+    getCurrencyTransactions,
     getSeedInventory,
     plantSeed,
     getDecorationSummary,
     purchaseDecoration,
     placeDecoration,
-    movePlacedDecoration
+    movePlacedDecoration,
+    removePlacedDecoration
   } = useEmotionApi()
 
   const resolvePreferredDate = useCallback(
@@ -251,7 +316,8 @@ function App(): React.JSX.Element {
           nextAchievementsResult,
           nextFlowerDexResult,
           nextTitlesResult,
-          nextDecorationResult
+          nextDecorationResult,
+          nextCurrencyTransactionsResult
         ] = await Promise.allSettled([
           options.nextGarden ? Promise.resolve(options.nextGarden) : listGarden(),
           getEmotionStats(7),
@@ -260,7 +326,8 @@ function App(): React.JSX.Element {
           getAchievements(),
           getFlowerDex(),
           getTitles(),
-          getDecorationSummary()
+          getDecorationSummary(),
+          getCurrencyTransactions(8)
         ])
 
         if (requestId !== refreshRequestIdRef.current) {
@@ -282,6 +349,10 @@ function App(): React.JSX.Element {
         const nextTitles = nextTitlesResult.status === 'fulfilled' ? nextTitlesResult.value : null
         const nextDecorations =
           nextDecorationResult.status === 'fulfilled' ? nextDecorationResult.value : null
+        const nextCurrencyTransactions =
+          nextCurrencyTransactionsResult.status === 'fulfilled'
+            ? nextCurrencyTransactionsResult.value
+            : currencyTransactions
 
         setGardenItems(nextGarden)
         setStatsSummary(nextStats)
@@ -291,6 +362,7 @@ function App(): React.JSX.Element {
         setFlowerDexSummary(nextFlowerDex)
         setTitleSummary(nextTitles)
         setDecorationSummary(nextDecorations)
+        setCurrencyTransactions(nextCurrencyTransactions)
         if (nextDecorations) {
           setPlacedDecorations(nextDecorations.placed)
         }
@@ -350,11 +422,13 @@ function App(): React.JSX.Element {
       getGardenGrowth,
       getTitles,
       getDecorationSummary,
+      getCurrencyTransactions,
       listEmotionCalendar,
       listEmotionTimeline,
       listGarden,
       resolvePreferredDate,
-      selectedDate
+      selectedDate,
+      currencyTransactions
     ]
   )
 
@@ -745,8 +819,10 @@ function App(): React.JSX.Element {
 
     if (result.success) {
       const nextLands = await getGardenLands()
+      const nextTransactions = await getCurrencyTransactions(8)
       setGardenLands(nextLands)
       setCurrencyBalance(result.balance)
+      setCurrencyTransactions(nextTransactions)
       setStatusText(`地块解锁成功，花费 ${result.coinsSpent} 金币。`)
       window.setTimeout(() => setStatusText(defaultStatusText), 2000)
     } else {
@@ -791,6 +867,11 @@ function App(): React.JSX.Element {
     setCurrencyBalance(balance.balance)
   }
 
+  const loadCurrencyTransactions = async (): Promise<void> => {
+    const transactions = await getCurrencyTransactions(8)
+    setCurrencyTransactions(transactions)
+  }
+
   const loadGardenLands = async (): Promise<void> => {
     const lands = await getGardenLands()
     setGardenLands(lands)
@@ -811,6 +892,7 @@ function App(): React.JSX.Element {
     const result = await purchaseDecoration(type)
     if (result.success) {
       setCurrencyBalance(result.balance)
+      await loadCurrencyTransactions()
       setStatusText('购买成功，返回花园即可放置装饰。')
       window.setTimeout(() => setStatusText(defaultStatusText), 2000)
     } else {
@@ -832,8 +914,14 @@ function App(): React.JSX.Element {
   const handleSelectDecorationToMove = (decoration: PlacedDecoration): void => {
     setMovingDecoration(decoration)
     setActiveDecoration(null)
-    setStatusText('点击新位置移动装饰，或再次点击装饰取消。')
+    setStatusText('点击空地移动装饰，也可以取消移动或收回装饰。')
     window.setTimeout(() => setStatusText(defaultStatusText), 3000)
+  }
+
+  const handleCancelDecorationMove = (): void => {
+    setMovingDecoration(null)
+    setStatusText('已取消移动装饰。')
+    window.setTimeout(() => setStatusText(defaultStatusText), 2000)
   }
 
   const handleMoveDecoration = async (gridX: number, gridY: number): Promise<void> => {
@@ -850,9 +938,18 @@ function App(): React.JSX.Element {
     window.setTimeout(() => setStatusText(defaultStatusText), 2000)
   }
 
+  const handleRemoveDecoration = async (placedId: number): Promise<void> => {
+    await removePlacedDecoration(placedId)
+    setMovingDecoration(null)
+    await loadPlacedDecorations()
+    setStatusText('装饰已收回，可从图鉴重新放置。')
+    window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+  }
+
   useEffect(() => {
     loadGardenLands()
     loadCurrencyBalance()
+    loadCurrencyTransactions()
     loadSeedInventory()
     loadPlacedDecorations()
   }, [])
@@ -1163,7 +1260,10 @@ function App(): React.JSX.Element {
                 <h2 className="mb-3 border-b-3 border-dashed border-[#2e7d32]/30 pb-2 text-sm font-bold tracking-widest text-[var(--accent-emerald)]">
                   花园进度
                 </h2>
-                <GardenGrowthPanel snapshot={growthSnapshot} loading={isDashboardLoading} />
+                <div className="flex flex-col gap-4">
+                  <GardenGrowthPanel snapshot={growthSnapshot} loading={isDashboardLoading} />
+                  <CurrencyLedger transactions={currencyTransactions} balance={currencyBalance} />
+                </div>
               </div>
             </section>
           ) : (
@@ -1227,6 +1327,8 @@ function App(): React.JSX.Element {
             onPlaceDecoration={handlePlaceDecoration}
             onMoveDecoration={handleMoveDecoration}
             onSelectDecorationToMove={handleSelectDecorationToMove}
+            onCancelDecorationMove={handleCancelDecorationMove}
+            onRemoveDecoration={handleRemoveDecoration}
             wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0}
           />
         </section>
