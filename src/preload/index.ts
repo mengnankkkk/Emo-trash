@@ -12,7 +12,9 @@ import type {
   PlaceDecorationInput,
   MovePlacedDecorationInput,
   PurchaseDecorationInput,
-  RemovePlacedDecorationInput
+  RemovePlacedDecorationInput,
+  ComposeSeedInput,
+  RecycleSeedInput
 } from './api'
 
 const api: EmoTrashApi = {
@@ -100,6 +102,18 @@ const api: EmoTrashApi = {
   },
   purchaseDecoration(input: PurchaseDecorationInput) {
     return ipcRenderer.invoke(emoTrashChannels.purchaseDecoration, input)
+  },
+  getDailyCheckInStatus() {
+    return ipcRenderer.invoke(emoTrashChannels.getDailyCheckInStatus)
+  },
+  claimDailyCheckIn() {
+    return ipcRenderer.invoke(emoTrashChannels.claimDailyCheckIn)
+  },
+  composeSeed(input: ComposeSeedInput) {
+    return ipcRenderer.invoke(emoTrashChannels.composeSeed, input)
+  },
+  recycleSeed(input: RecycleSeedInput) {
+    return ipcRenderer.invoke(emoTrashChannels.recycleSeed, input)
   }
 }
 

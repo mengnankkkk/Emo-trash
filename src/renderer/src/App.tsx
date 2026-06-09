@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AchievementSummary,
   CurrencyTransaction,
+  DailyCheckInStatus,
   DecorationType,
   DecorationSummary,
   EmotionCalendarDay,
@@ -22,10 +23,13 @@ import type {
 } from './types/emotion'
 import CaptureInput from './features/capture/CaptureInput'
 import DailyQuickEntry from './features/capture/DailyQuickEntry'
+import { DailyCheckInCard } from './features/capture/DailyCheckInCard'
 import EmotionStatsPanel from './features/analytics/EmotionStatsPanel'
+import { CurrencyLedger } from './features/analytics/CurrencyLedger'
 import GardenGrowthPanel from './features/garden/GardenGrowthPanel'
 import GridGardenView from './features/garden/GridGardenView'
 import GardenWeather from './features/garden/GardenWeather'
+import { FlowerDetailPanel } from './features/garden/FlowerDetailPanel'
 import EmotionCalendarHeatmap from './features/history/EmotionCalendarHeatmap'
 import EmotionFilterBar from './features/history/EmotionFilterBar'
 import EmotionTimeline from './features/history/EmotionTimeline'
@@ -112,65 +116,22 @@ interface NextGoal {
   tone: 'emerald' | 'amber' | 'sky' | 'purple'
 }
 
-function CurrencyLedger({
-  transactions,
-  balance
-}: {
-  transactions: CurrencyTransaction[]
-  balance: number
-}): React.JSX.Element {
-  return (
-    <section className="rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-surface)] p-5">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-muted)]">金币账本</p>
-          <h3 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">最近收支</h3>
-        </div>
-        <span className="rounded-[2px] border-2 border-[var(--accent-amber)] bg-[color-mix(in_srgb,var(--accent-amber)_10%,var(--bg-panel))] px-3 py-1.5 text-xs font-bold text-[var(--accent-amber)]">
-          G {balance}
-        </span>
-      </div>
+interface RefreshPanelOptions {
+  preferSelectedDate: boolean
+  nextGarden?: GardenItem[]
+}
 
-      {transactions.length === 0 ? (
-        <div className="mt-5 rounded-[4px] border-2 border-dashed border-[var(--border-primary)] bg-[var(--bg-panel)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
-          还没有金币流水。
-        </div>
-      ) : (
-        <div className="mt-5 space-y-2">
-          {transactions.slice(0, 8).map((transaction) => {
-            const isSpend = transaction.transactionType === 'spend'
-            const amountLabel = `${isSpend ? '-' : '+'}${Math.abs(transaction.amount)}`
-            return (
-              <article
-                key={transaction.id}
-                className="flex items-center justify-between gap-3 rounded-[4px] border-2 border-[var(--border-primary)] bg-[var(--bg-panel)] px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-[var(--text-primary)]">
-                    {transaction.description}
-                  </p>
-                  <p className="mt-1 text-[10px] text-[var(--text-muted)]">
-                    {transaction.createdAt.split('T')[0] || transaction.createdAt}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p
-                    className="text-sm font-bold"
-                    style={{ color: isSpend ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}
-                  >
-                    {amountLabel}
-                  </p>
-                  <p className="mt-1 text-[10px] text-[var(--text-muted)]">
-                    余额 {transaction.balanceAfter}
-                  </p>
-                </div>
-              </article>
-            )
-          })}
-        </div>
-      )}
-    </section>
-  )
+interface DashboardSnapshot {
+  garden: GardenItem[]
+  stats: EmotionStatsSummary | null
+  growth: GardenGrowthSnapshot | null
+  calendar: EmotionCalendarDay[]
+  achievements: AchievementSummary | null
+  flowerDex: FlowerDexSummary | null
+  titles: TitleSummary | null
+  decorations: DecorationSummary | null
+  currencyTransactions: CurrencyTransaction[]
+  checkIn: DailyCheckInStatus | null
 }
 
 function App(): React.JSX.Element {
@@ -179,17 +140,21 @@ function App(): React.JSX.Element {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [ritualText, setRitualText] = useState('')
   const [gardenItems, setGardenItems] = useState<GardenItem[]>([])
+  const [selectedFlowerId, setSelectedFlowerId] = useState<number | null>(null)
   const [gardenLands, setGardenLands] = useState<GardenLandCell[]>([])
   const [seedInventory, setSeedInventory] = useState<SeedInventoryItem[]>([])
-  const [activeSeed, setActiveSeed] = useState<{ emotionTag: EmotionTag; rarity: string } | null>(
-    null
-  )
+  const [activeSeed, setActiveSeed] = useState<{
+    emotionTag: EmotionTag
+    rarity: FlowerRarity
+  } | null>(null)
   const [placedDecorations, setPlacedDecorations] = useState<PlacedDecoration[]>([])
   const [decorationSummary, setDecorationSummary] = useState<DecorationSummary | null>(null)
   const [activeDecoration, setActiveDecoration] = useState<DecorationType | null>(null)
   const [movingDecoration, setMovingDecoration] = useState<PlacedDecoration | null>(null)
   const [currencyBalance, setCurrencyBalance] = useState(0)
   const [currencyTransactions, setCurrencyTransactions] = useState<CurrencyTransaction[]>([])
+  const [dailyCheckInStatus, setDailyCheckInStatus] = useState<DailyCheckInStatus | null>(null)
+  const [isClaimingCheckIn, setIsClaimingCheckIn] = useState(false)
   const [coinToastAmount, setCoinToastAmount] = useState<number | null>(null)
   const [battleToast, setBattleToast] = useState<EmotionBattleMatch | null>(null)
   const [ritualActive, setRitualActive] = useState(false)
@@ -220,6 +185,8 @@ function App(): React.JSX.Element {
   const hasLoadedRef = useRef(false)
   const refreshRequestIdRef = useRef(0)
   const analysisRequestIdRef = useRef(0)
+  const statusResetTimerRef = useRef<number | null>(null)
+  const coinToastTimerRef = useRef<number | null>(null)
   const {
     analyzeEmotion,
     listGarden,
@@ -239,6 +206,10 @@ function App(): React.JSX.Element {
     getCurrencyTransactions,
     getSeedInventory,
     plantSeed,
+    getDailyCheckInStatus,
+    claimDailyCheckIn,
+    composeSeed,
+    recycleSeed,
     getDecorationSummary,
     purchaseDecoration,
     placeDecoration,
@@ -260,6 +231,49 @@ function App(): React.JSX.Element {
     },
     []
   )
+
+  const showStatus = useCallback((message: string, durationMs = 2000): void => {
+    if (statusResetTimerRef.current !== null) {
+      window.clearTimeout(statusResetTimerRef.current)
+    }
+
+    setStatusText(message)
+
+    if (message === defaultStatusText) {
+      statusResetTimerRef.current = null
+      return
+    }
+
+    statusResetTimerRef.current = window.setTimeout(() => {
+      setStatusText(defaultStatusText)
+      statusResetTimerRef.current = null
+    }, durationMs)
+  }, [])
+
+  const showPersistentStatus = useCallback((message: string): void => {
+    if (statusResetTimerRef.current !== null) {
+      window.clearTimeout(statusResetTimerRef.current)
+      statusResetTimerRef.current = null
+    }
+
+    setStatusText(message)
+  }, [])
+
+  const showCoinReward = useCallback((amount?: number | null, durationMs = 2000): void => {
+    if (!amount || amount <= 0) {
+      return
+    }
+
+    if (coinToastTimerRef.current !== null) {
+      window.clearTimeout(coinToastTimerRef.current)
+    }
+
+    setCoinToastAmount(amount)
+    coinToastTimerRef.current = window.setTimeout(() => {
+      setCoinToastAmount(null)
+      coinToastTimerRef.current = null
+    }, durationMs)
+  }, [])
 
   const refreshTimeline = useCallback(
     async (date: string, tags: EmotionTag[]): Promise<void> => {
@@ -296,118 +310,216 @@ function App(): React.JSX.Element {
     [listEmotionCalendar, listEmotionTimeline, resolvePreferredDate, selectedDate]
   )
 
-  const refreshAllPanels = useCallback(
+  const loadDashboardSnapshot = useCallback(
+    async (options: RefreshPanelOptions): Promise<DashboardSnapshot> => {
+      const [
+        nextGardenResult,
+        nextStatsResult,
+        nextGrowthResult,
+        nextCalendarResult,
+        nextAchievementsResult,
+        nextFlowerDexResult,
+        nextTitlesResult,
+        nextDecorationResult,
+        nextCurrencyTransactionsResult,
+        nextCheckInResult
+      ] = await Promise.allSettled([
+        options.nextGarden ? Promise.resolve(options.nextGarden) : listGarden(),
+        getEmotionStats(7),
+        getGardenGrowth(),
+        listEmotionCalendar(30, emotionFilter),
+        getAchievements(),
+        getFlowerDex(),
+        getTitles(),
+        getDecorationSummary(),
+        getCurrencyTransactions(8),
+        getDailyCheckInStatus()
+      ])
+
+      return {
+        garden:
+          nextGardenResult.status === 'fulfilled'
+            ? nextGardenResult.value
+            : (options.nextGarden ?? []),
+        stats: nextStatsResult.status === 'fulfilled' ? nextStatsResult.value : null,
+        growth: nextGrowthResult.status === 'fulfilled' ? nextGrowthResult.value : null,
+        calendar: nextCalendarResult.status === 'fulfilled' ? nextCalendarResult.value : calendarDays,
+        achievements:
+          nextAchievementsResult.status === 'fulfilled' ? nextAchievementsResult.value : null,
+        flowerDex: nextFlowerDexResult.status === 'fulfilled' ? nextFlowerDexResult.value : null,
+        titles: nextTitlesResult.status === 'fulfilled' ? nextTitlesResult.value : null,
+        decorations:
+          nextDecorationResult.status === 'fulfilled' ? nextDecorationResult.value : null,
+        currencyTransactions:
+          nextCurrencyTransactionsResult.status === 'fulfilled'
+            ? nextCurrencyTransactionsResult.value
+            : currencyTransactions,
+        checkIn: nextCheckInResult.status === 'fulfilled' ? nextCheckInResult.value : dailyCheckInStatus
+      }
+    },
+    [
+      calendarDays,
+      currencyTransactions,
+      dailyCheckInStatus,
+      emotionFilter,
+      getAchievements,
+      getCurrencyTransactions,
+      getDailyCheckInStatus,
+      getDecorationSummary,
+      getEmotionStats,
+      getFlowerDex,
+      getGardenGrowth,
+      getTitles,
+      listEmotionCalendar,
+      listGarden
+    ]
+  )
+
+  const enqueueAchievementToasts = useCallback((summary: AchievementSummary | null): void => {
+    if (!summary) {
+      return
+    }
+
+    const newlyUnlocked = summary.recentlyUnlocked.filter(
+      (achievement) => !seenUnlockedIdsRef.current.has(achievement.id)
+    )
+    if (newlyUnlocked.length === 0) {
+      return
+    }
+
+    newlyUnlocked.forEach((achievement) => seenUnlockedIdsRef.current.add(achievement.id))
+    if (seenUnlockedIdsRef.current.size > newlyUnlocked.length) {
+      setAchievementToasts((prev) => [
+        ...prev,
+        ...newlyUnlocked.map((achievement) => ({
+          id: achievement.id,
+          title: achievement.title
+        }))
+      ])
+    }
+  }, [])
+
+  const applyDashboardSnapshot = useCallback(
+    (snapshot: DashboardSnapshot): void => {
+      setGardenItems(snapshot.garden)
+      setStatsSummary(snapshot.stats)
+      setGrowthSnapshot(snapshot.growth)
+      setCalendarDays(snapshot.calendar)
+      setAchievementSummary(snapshot.achievements)
+      setFlowerDexSummary(snapshot.flowerDex)
+      setTitleSummary(snapshot.titles)
+      setDecorationSummary(snapshot.decorations)
+      setCurrencyTransactions(snapshot.currencyTransactions)
+      setDailyCheckInStatus(snapshot.checkIn)
+
+      if (snapshot.decorations) {
+        setPlacedDecorations(snapshot.decorations.placed)
+      }
+
+      enqueueAchievementToasts(snapshot.achievements)
+    },
+    [enqueueAchievementToasts]
+  )
+
+  const loadCurrencyState = useCallback(
+    async ({ includeTransactions = true }: { includeTransactions?: boolean } = {}): Promise<void> => {
+      const [balance, transactions] = await Promise.all([
+        getCurrencyBalance(),
+        includeTransactions ? getCurrencyTransactions(8) : Promise.resolve(null)
+      ])
+
+      setCurrencyBalance(balance.balance)
+      if (transactions) {
+        setCurrencyTransactions(transactions)
+      }
+    },
+    [getCurrencyBalance, getCurrencyTransactions]
+  )
+
+  const loadSeedInventoryState = useCallback(async (): Promise<void> => {
+    const seeds = await getSeedInventory()
+    setSeedInventory(seeds)
+  }, [getSeedInventory])
+
+  const loadGardenLandsState = useCallback(async (): Promise<void> => {
+    const lands = await getGardenLands()
+    setGardenLands(lands)
+  }, [getGardenLands])
+
+  const loadDecorationState = useCallback(async (): Promise<void> => {
+    const summary = await getDecorationSummary()
+    setDecorationSummary(summary)
+    setPlacedDecorations(summary.placed)
+  }, [getDecorationSummary])
+
+  const loadCollectionState = useCallback(async (): Promise<void> => {
+    const [achievements, flowerDex, titles] = await Promise.all([
+      getAchievements(),
+      getFlowerDex(),
+      getTitles()
+    ])
+
+    setAchievementSummary(achievements)
+    setFlowerDexSummary(flowerDex)
+    setTitleSummary(titles)
+    enqueueAchievementToasts(achievements)
+  }, [enqueueAchievementToasts, getAchievements, getFlowerDex, getTitles])
+
+  const loadGrowthState = useCallback(async (): Promise<void> => {
+    const growth = await getGardenGrowth()
+    setGrowthSnapshot(growth)
+  }, [getGardenGrowth])
+
+  const refreshTimelineForCalendar = useCallback(
     async (
-      options: {
-        preferSelectedDate: boolean
-        nextGarden?: GardenItem[]
-      } = { preferSelectedDate: true }
+      days: EmotionCalendarDay[],
+      tags: EmotionTag[],
+      preferredDate: string | null,
+      requestId: number
     ): Promise<void> => {
+      const nextSelectedDate = resolvePreferredDate(days, preferredDate)
+      setSelectedDate(nextSelectedDate)
+
+      if (!nextSelectedDate) {
+        setTimelineItems([])
+        return
+      }
+
+      const nextTimeline = await listEmotionTimeline({
+        date: nextSelectedDate,
+        emotionTags: tags,
+        limit: 50
+      })
+
+      if (requestId !== refreshRequestIdRef.current) {
+        return
+      }
+
+      setTimelineItems(nextTimeline)
+    },
+    [listEmotionTimeline, resolvePreferredDate]
+  )
+
+  const refreshAllPanels = useCallback(
+    async (options: RefreshPanelOptions = { preferSelectedDate: true }): Promise<void> => {
       const requestId = refreshRequestIdRef.current + 1
       refreshRequestIdRef.current = requestId
       setIsDashboardLoading(true)
 
       try {
-        const [
-          nextGardenResult,
-          nextStatsResult,
-          nextGrowthResult,
-          nextCalendarResult,
-          nextAchievementsResult,
-          nextFlowerDexResult,
-          nextTitlesResult,
-          nextDecorationResult,
-          nextCurrencyTransactionsResult
-        ] = await Promise.allSettled([
-          options.nextGarden ? Promise.resolve(options.nextGarden) : listGarden(),
-          getEmotionStats(7),
-          getGardenGrowth(),
-          listEmotionCalendar(30, emotionFilter),
-          getAchievements(),
-          getFlowerDex(),
-          getTitles(),
-          getDecorationSummary(),
-          getCurrencyTransactions(8)
-        ])
+        const snapshot = await loadDashboardSnapshot(options)
 
         if (requestId !== refreshRequestIdRef.current) {
           return
         }
 
-        const nextGarden =
-          nextGardenResult.status === 'fulfilled'
-            ? nextGardenResult.value
-            : (options.nextGarden ?? [])
-        const nextStats = nextStatsResult.status === 'fulfilled' ? nextStatsResult.value : null
-        const nextGrowth = nextGrowthResult.status === 'fulfilled' ? nextGrowthResult.value : null
-        const nextCalendar =
-          nextCalendarResult.status === 'fulfilled' ? nextCalendarResult.value : calendarDays
-        const nextAchievements =
-          nextAchievementsResult.status === 'fulfilled' ? nextAchievementsResult.value : null
-        const nextFlowerDex =
-          nextFlowerDexResult.status === 'fulfilled' ? nextFlowerDexResult.value : null
-        const nextTitles = nextTitlesResult.status === 'fulfilled' ? nextTitlesResult.value : null
-        const nextDecorations =
-          nextDecorationResult.status === 'fulfilled' ? nextDecorationResult.value : null
-        const nextCurrencyTransactions =
-          nextCurrencyTransactionsResult.status === 'fulfilled'
-            ? nextCurrencyTransactionsResult.value
-            : currencyTransactions
-
-        setGardenItems(nextGarden)
-        setStatsSummary(nextStats)
-        setGrowthSnapshot(nextGrowth)
-        setCalendarDays(nextCalendar)
-        setAchievementSummary(nextAchievements)
-        setFlowerDexSummary(nextFlowerDex)
-        setTitleSummary(nextTitles)
-        setDecorationSummary(nextDecorations)
-        setCurrencyTransactions(nextCurrencyTransactions)
-        if (nextDecorations) {
-          setPlacedDecorations(nextDecorations.placed)
-        }
-
-        if (nextAchievements) {
-          const newlyUnlocked = nextAchievements.recentlyUnlocked.filter(
-            (achievement) => !seenUnlockedIdsRef.current.has(achievement.id)
-          )
-          if (newlyUnlocked.length > 0) {
-            newlyUnlocked.forEach((achievement) => seenUnlockedIdsRef.current.add(achievement.id))
-            if (seenUnlockedIdsRef.current.size > newlyUnlocked.length) {
-              setAchievementToasts((prev) => [
-                ...prev,
-                ...newlyUnlocked.map((achievement) => ({
-                  id: achievement.id,
-                  title: achievement.title
-                }))
-              ])
-            }
-          }
-        }
+        applyDashboardSnapshot(snapshot)
 
         const requestedDate = options.preferSelectedDate ? selectedDate : null
-        const nextSelectedDate = resolvePreferredDate(nextCalendar, requestedDate)
-        setSelectedDate(nextSelectedDate)
-
-        if (nextSelectedDate) {
-          const nextTimeline = await listEmotionTimeline({
-            date: nextSelectedDate,
-            emotionTags: emotionFilter,
-            limit: 50
-          })
-
-          if (requestId !== refreshRequestIdRef.current) {
-            return
-          }
-
-          setTimelineItems(nextTimeline)
-        } else {
-          setTimelineItems([])
-        }
+        await refreshTimelineForCalendar(snapshot.calendar, emotionFilter, requestedDate, requestId)
       } catch (error) {
         console.error('refreshAllPanels failed', error)
-        setStatusText('界面刷新失败，请稍后重试。')
-        window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+        showStatus('界面刷新失败，请稍后重试。')
       } finally {
         if (requestId === refreshRequestIdRef.current) {
           setIsDashboardLoading(false)
@@ -415,20 +527,12 @@ function App(): React.JSX.Element {
       }
     },
     [
+      applyDashboardSnapshot,
       emotionFilter,
-      getAchievements,
-      getEmotionStats,
-      getFlowerDex,
-      getGardenGrowth,
-      getTitles,
-      getDecorationSummary,
-      getCurrencyTransactions,
-      listEmotionCalendar,
-      listEmotionTimeline,
-      listGarden,
-      resolvePreferredDate,
+      loadDashboardSnapshot,
+      refreshTimelineForCalendar,
       selectedDate,
-      currencyTransactions
+      showStatus
     ]
   )
 
@@ -440,8 +544,24 @@ function App(): React.JSX.Element {
     }
 
     hasLoadedRef.current = true
-    void refreshAllPanels({ preferSelectedDate: false })
-  }, [refreshAllPanels])
+    void Promise.allSettled([
+      refreshAllPanels({ preferSelectedDate: false }),
+      loadGardenLandsState(),
+      loadCurrencyState({ includeTransactions: false }),
+      loadSeedInventoryState()
+    ])
+  }, [loadCurrencyState, loadGardenLandsState, loadSeedInventoryState, refreshAllPanels])
+
+  useEffect(() => {
+    return () => {
+      if (statusResetTimerRef.current !== null) {
+        window.clearTimeout(statusResetTimerRef.current)
+      }
+      if (coinToastTimerRef.current !== null) {
+        window.clearTimeout(coinToastTimerRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (quickEntryCheckedRef.current || isDashboardLoading) return
@@ -511,6 +631,14 @@ function App(): React.JSX.Element {
   const previewGardenItems = useMemo(() => {
     return gardenItems.slice(0, 6)
   }, [gardenItems])
+
+  const selectedFlower = useMemo(() => {
+    if (selectedFlowerId === null) {
+      return null
+    }
+
+    return gardenItems.find((item) => item.id === selectedFlowerId) ?? null
+  }, [gardenItems, selectedFlowerId])
 
   const currentWeather = useMemo(() => computeEmotionWeather(gardenItems), [gardenItems])
 
@@ -654,26 +782,22 @@ function App(): React.JSX.Element {
       const seedResult = await releaseEmotion(quickInput)
       const nextSeeds = await getSeedInventory()
       setSeedInventory(nextSeeds)
+      await loadCurrencyState()
 
       if (seedResult.seedAdded) {
-        setStatusText(`已获得一颗${seedResult.emotionTag}种子，去花园里播种吧。`)
-        window.setTimeout(() => setStatusText(defaultStatusText), 3000)
+        showStatus(`已获得一颗${seedResult.emotionTag}种子，去花园里播种吧。`, 3000)
       }
 
-      // 显示金币Toast
-      if (seedResult.coinsEarned && seedResult.coinsEarned > 0) {
-        setCoinToastAmount(seedResult.coinsEarned)
-        window.setTimeout(() => setCoinToastAmount(null), 2000)
-      }
+      showCoinReward(seedResult.coinsEarned)
 
       setRecapData({
         emotionTag,
         intensity: 'mild',
-        rarity: (seedResult.rarity as any) ?? 'common'
+        rarity: seedResult.rarity
       })
     } catch (error) {
       console.error(error)
-      setStatusText('快速释放失败，请稍后再试。')
+      showStatus('快速释放失败，请稍后再试。')
     }
   }
 
@@ -689,7 +813,7 @@ function App(): React.JSX.Element {
     setRitualText(trimmedInput)
     setParticleState('burst')
     setRitualActive(true)
-    setStatusText('正在粉碎情绪，并把它凝成一颗种子……')
+    showPersistentStatus('正在粉碎情绪，并把它凝成一颗种子……')
 
     try {
       const seedResult = await releaseEmotion(draftAnalysis)
@@ -697,21 +821,17 @@ function App(): React.JSX.Element {
       const pendingRecap = {
         emotionTag: draftAnalysis.emotionTag,
         intensity: draftAnalysis.analysis.emotionIntensity,
-        rarity: (seedResult.rarity as any) ?? 'common'
+        rarity: seedResult.rarity
       }
 
       setInputValue('')
       setDraftAnalysis(null)
       setSeedInventory(nextSeeds)
-      setStatusText('释放完成，新的种子已经放进背包。')
+      showStatus('释放完成，新的种子已经放进背包。')
 
-      // 显示金币Toast
-      if (seedResult.coinsEarned && seedResult.coinsEarned > 0) {
-        setCoinToastAmount(seedResult.coinsEarned)
-        window.setTimeout(() => setCoinToastAmount(null), 2000)
-      }
+      showCoinReward(seedResult.coinsEarned)
 
-      await refreshAllPanels({ preferSelectedDate: true })
+      await loadCurrencyState()
 
       window.setTimeout(() => {
         setRitualActive(false)
@@ -721,7 +841,7 @@ function App(): React.JSX.Element {
       }, 1400)
     } catch (error) {
       console.error(error)
-      setStatusText('释放失败，请稍后重试。')
+      showStatus('释放失败，请稍后重试。')
       window.setTimeout(() => {
         setRitualActive(false)
         setRitualText('')
@@ -736,12 +856,7 @@ function App(): React.JSX.Element {
     const result = await waterFlower(flowerId)
     if (result.success) {
       setGardenItems(result.garden)
-
-      // 显示浇水金币Toast
-      if (result.coinsEarned && result.coinsEarned > 0) {
-        setCoinToastAmount(result.coinsEarned)
-        window.setTimeout(() => setCoinToastAmount(null), 2000)
-      }
+      showCoinReward(result.coinsEarned)
 
       void refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true }).catch(
         (error) => {
@@ -751,57 +866,26 @@ function App(): React.JSX.Element {
     }
   }
 
-  const _handlePickFlowerLegacy = async (flowerId: number): Promise<void> => {
-    const result = await pickFlower(flowerId)
-
-    if (!result.success) {
-      setStatusText(result.message || '采摘失败。')
-      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
-      return
-    }
-
-    setGardenItems(result.garden)
-
-    if (result.coinsEarned > 0) {
-      setCoinToastAmount(result.coinsEarned)
-    }
-
-    if (result.message) {
-      setStatusText(result.message)
-      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
-    }
-
-    const balance = await getCurrencyBalance()
-    setCurrencyBalance(balance.balance)
-    await refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true })
-  }
-
-  void _handlePickFlowerLegacy
-
   const handlePickFlower = async (flowerId: number): Promise<void> => {
     try {
       const result = await pickFlower(flowerId)
 
       if (!result.success) {
-        setStatusText(result.message || '采摘失败。')
-        window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+        showStatus(result.message || '采摘失败。')
         return
       }
 
       setGardenItems(result.garden)
+      setSelectedFlowerId(null)
 
-      if (result.coinsEarned > 0) {
-        setCoinToastAmount(result.coinsEarned)
-      }
+      showCoinReward(result.coinsEarned)
 
       if (result.message) {
-        setStatusText(result.message)
-        window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+        showStatus(result.message)
       }
 
       try {
-        const balance = await getCurrencyBalance()
-        setCurrencyBalance(balance.balance)
+        await loadCurrencyState({ includeTransactions: false })
       } catch (error) {
         console.error('load currency balance after pick failed', error)
       }
@@ -809,8 +893,7 @@ function App(): React.JSX.Element {
       await refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true })
     } catch (error) {
       console.error('pick flower failed', error)
-      setStatusText('采摘失败，请稍后重试。')
-      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+      showStatus('采摘失败，请稍后重试。')
     }
   }
 
@@ -818,16 +901,15 @@ function App(): React.JSX.Element {
     const result = await unlockGardenLand(gridX, gridY)
 
     if (result.success) {
-      const nextLands = await getGardenLands()
-      const nextTransactions = await getCurrencyTransactions(8)
-      setGardenLands(nextLands)
-      setCurrencyBalance(result.balance)
-      setCurrencyTransactions(nextTransactions)
-      setStatusText(`地块解锁成功，花费 ${result.coinsSpent} 金币。`)
-      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+      await Promise.all([
+        loadGardenLandsState(),
+        loadCurrencyState(),
+        loadCollectionState(),
+        loadDecorationState()
+      ])
+      showStatus(`地块解锁成功，花费 ${result.coinsSpent} 金币。`)
     } else {
-      setStatusText(result.message || '地块解锁失败。')
-      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+      showStatus(result.message || '地块解锁失败。')
     }
   }
 
@@ -836,7 +918,7 @@ function App(): React.JSX.Element {
 
     const result = await plantSeed({
       emotionTag: activeSeed.emotionTag,
-      rarity: activeSeed.rarity as any,
+      rarity: activeSeed.rarity,
       gridX,
       gridY
     })
@@ -844,60 +926,68 @@ function App(): React.JSX.Element {
     if (result.success) {
       setGardenItems(result.garden)
       setActiveSeed(null)
-      setStatusText('播种成功，花朵已经开始生长。')
-      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+      showStatus('播种成功，花朵已经开始生长。')
 
       const nextSeeds = await getSeedInventory()
       setSeedInventory(nextSeeds)
 
-      // 显示情绪对战Toast
       if (result.battleMatch) {
         setBattleToast(result.battleMatch)
       }
 
       await refreshAllPanels({ nextGarden: result.garden, preferSelectedDate: true })
     } else {
-      setStatusText(result.message || '播种失败。')
-      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+      showStatus(result.message || '播种失败。')
     }
   }
 
-  const loadCurrencyBalance = async (): Promise<void> => {
-    const balance = await getCurrencyBalance()
-    setCurrencyBalance(balance.balance)
+  const handleComposeSeed = async (emotionTag: EmotionTag): Promise<void> => {
+    const result = await composeSeed(emotionTag)
+    setSeedInventory(result.seeds)
+    setCurrencyBalance(result.balance)
+    showStatus(result.message ?? (result.success ? '种子合成成功。' : '种子合成失败。'))
   }
 
-  const loadCurrencyTransactions = async (): Promise<void> => {
-    const transactions = await getCurrencyTransactions(8)
-    setCurrencyTransactions(transactions)
+  const handleRecycleSeed = async (emotionTag: EmotionTag, rarity: FlowerRarity): Promise<void> => {
+    const result = await recycleSeed(emotionTag, rarity)
+    setSeedInventory(result.seeds)
+    setCurrencyBalance(result.balance)
+    if (result.rewardCoins && result.rewardCoins > 0) {
+      showCoinReward(result.rewardCoins)
+      await loadCurrencyState()
+    }
+    showStatus(result.message ?? (result.success ? '种子已回收。' : '种子回收失败。'))
   }
 
-  const loadGardenLands = async (): Promise<void> => {
-    const lands = await getGardenLands()
-    setGardenLands(lands)
-  }
+  const handleClaimDailyCheckIn = async (): Promise<void> => {
+    setIsClaimingCheckIn(true)
+    try {
+      const result = await claimDailyCheckIn()
+      setDailyCheckInStatus(result.status)
+      setSeedInventory(result.seeds)
+      setCurrencyBalance(result.balance)
+      await loadCurrencyState()
 
-  const loadSeedInventory = async (): Promise<void> => {
-    const seeds = await getSeedInventory()
-    setSeedInventory(seeds)
-  }
+      if (result.reward?.type === 'currency' && result.reward.coins) {
+        showCoinReward(result.reward.coins)
+      }
 
-  const loadPlacedDecorations = async (): Promise<void> => {
-    const summary = await getDecorationSummary()
-    setDecorationSummary(summary)
-    setPlacedDecorations(summary.placed)
+      showStatus(result.success ? '签到奖励已领取。' : (result.message ?? '签到失败。'))
+    } catch (error) {
+      console.error('claim daily check-in failed', error)
+      showStatus('签到失败，请稍后重试。')
+    } finally {
+      setIsClaimingCheckIn(false)
+    }
   }
 
   const handlePurchaseDecoration = async (type: DecorationType): Promise<void> => {
     const result = await purchaseDecoration(type)
     if (result.success) {
-      setCurrencyBalance(result.balance)
-      await loadCurrencyTransactions()
-      setStatusText('购买成功，返回花园即可放置装饰。')
-      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+      await Promise.all([loadCurrencyState(), loadDecorationState(), loadCollectionState()])
+      showStatus('购买成功，返回花园即可放置装饰。')
     } else {
-      setStatusText(result.message || '购买失败。')
-      window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+      showStatus(result.message || '购买失败。')
     }
   }
 
@@ -906,22 +996,19 @@ function App(): React.JSX.Element {
 
     await placeDecoration({ type: activeDecoration, positionX: gridX, positionY: gridY })
     setActiveDecoration(null)
-    await loadPlacedDecorations()
-    setStatusText('装饰已放置到花园。')
-    window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+    await Promise.all([loadDecorationState(), loadGrowthState()])
+    showStatus('装饰已放置到花园。')
   }
 
   const handleSelectDecorationToMove = (decoration: PlacedDecoration): void => {
     setMovingDecoration(decoration)
     setActiveDecoration(null)
-    setStatusText('点击空地移动装饰，也可以取消移动或收回装饰。')
-    window.setTimeout(() => setStatusText(defaultStatusText), 3000)
+    showStatus('点击空地移动装饰，也可以取消移动或收回装饰。', 3000)
   }
 
   const handleCancelDecorationMove = (): void => {
     setMovingDecoration(null)
-    setStatusText('已取消移动装饰。')
-    window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+    showStatus('已取消移动装饰。')
   }
 
   const handleMoveDecoration = async (gridX: number, gridY: number): Promise<void> => {
@@ -933,26 +1020,16 @@ function App(): React.JSX.Element {
       positionY: gridY
     })
     setMovingDecoration(null)
-    await loadPlacedDecorations()
-    setStatusText('装饰已移动到新位置。')
-    window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+    await loadDecorationState()
+    showStatus('装饰已移动到新位置。')
   }
 
   const handleRemoveDecoration = async (placedId: number): Promise<void> => {
     await removePlacedDecoration(placedId)
     setMovingDecoration(null)
-    await loadPlacedDecorations()
-    setStatusText('装饰已收回，可从图鉴重新放置。')
-    window.setTimeout(() => setStatusText(defaultStatusText), 2000)
+    await Promise.all([loadDecorationState(), loadGrowthState()])
+    showStatus('装饰已收回，可从图鉴重新放置。')
   }
-
-  useEffect(() => {
-    loadGardenLands()
-    loadCurrencyBalance()
-    loadCurrencyTransactions()
-    loadSeedInventory()
-    loadPlacedDecorations()
-  }, [])
 
   return (
     <main
@@ -1028,6 +1105,12 @@ function App(): React.JSX.Element {
 
       {activePage === 'release' ? (
         <section className="flex flex-1 flex-col gap-4">
+          <DailyCheckInCard
+            status={dailyCheckInStatus}
+            claiming={isClaimingCheckIn}
+            onClaim={() => void handleClaimDailyCheckIn()}
+          />
+
           {nextGoals.length > 0 && (
             <div className="pixel-panel pixel-panel--cyan grid gap-3 p-4 md:grid-cols-3">
               <div className="md:col-span-3">
@@ -1198,6 +1281,7 @@ function App(): React.JSX.Element {
               activeSeed={activeSeed}
               onWaterFlower={handleWaterFlower}
               onPickFlower={handlePickFlower}
+              onSelectFlower={(flower) => setSelectedFlowerId(flower.id)}
               onUnlockLand={handleUnlockLand}
               onPlantSeed={handlePlantSeed}
               wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0}
@@ -1311,6 +1395,8 @@ function App(): React.JSX.Element {
             activeSeed={activeSeed}
             onSelectSeed={(emotionTag, rarity) => setActiveSeed({ emotionTag, rarity })}
             onDeselectSeed={() => setActiveSeed(null)}
+            onComposeSeed={(emotionTag) => void handleComposeSeed(emotionTag)}
+            onRecycleSeed={(emotionTag, rarity) => void handleRecycleSeed(emotionTag, rarity)}
           />
           <GridGardenView
             items={gardenItems}
@@ -1322,6 +1408,7 @@ function App(): React.JSX.Element {
             activeSeed={activeSeed}
             onWaterFlower={handleWaterFlower}
             onPickFlower={handlePickFlower}
+            onSelectFlower={(flower) => setSelectedFlowerId(flower.id)}
             onUnlockLand={handleUnlockLand}
             onPlantSeed={handlePlantSeed}
             onPlaceDecoration={handlePlaceDecoration}
@@ -1362,6 +1449,16 @@ function App(): React.JSX.Element {
 
       {coinToastAmount !== null && (
         <CoinToast amount={coinToastAmount} onComplete={() => setCoinToastAmount(null)} />
+      )}
+
+      {selectedFlower && (
+        <FlowerDetailPanel
+          flower={selectedFlower}
+          wateringDisabled={(growthSnapshot?.manualWateringsRemaining ?? 0) <= 0}
+          onClose={() => setSelectedFlowerId(null)}
+          onWater={(flowerId) => void handleWaterFlower(flowerId)}
+          onPick={(flowerId) => void handlePickFlower(flowerId)}
+        />
       )}
 
       <BattleToast match={battleToast} onComplete={() => setBattleToast(null)} />

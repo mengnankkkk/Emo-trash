@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { GardenGrowthSnapshot, GardenItem, GardenLandCell } from '../../types/emotion'
+import type {
+  EmotionTag,
+  FlowerRarity,
+  GardenGrowthSnapshot,
+  GardenItem,
+  GardenLandCell
+} from '../../types/emotion'
 import type { PlacedDecoration, DecorationType } from '../../../../preload/api'
 import { getFlowerAssetByType } from '../../lib/flowerAssets'
 import { getGrowthStageLabel } from '../../../../shared/emotionInsights'
@@ -30,9 +36,10 @@ interface GridGardenViewProps {
   activeDecoration?: DecorationType | null
   movingDecoration?: PlacedDecoration | null
   growthSnapshot: GardenGrowthSnapshot | null
-  activeSeed?: { emotionTag: string; rarity: string } | null
+  activeSeed?: { emotionTag: EmotionTag; rarity: FlowerRarity } | null
   onWaterFlower?: (flowerId: number) => void
   onPickFlower?: (flowerId: number) => void
+  onSelectFlower?: (flower: GardenItem) => void
   onUnlockLand?: (gridX: number, gridY: number) => void
   onPlantSeed?: (gridX: number, gridY: number) => void
   onPlaceDecoration?: (gridX: number, gridY: number) => void
@@ -53,6 +60,7 @@ function GridGardenView({
   activeSeed,
   onWaterFlower,
   onPickFlower,
+  onSelectFlower,
   onUnlockLand,
   onPlantSeed,
   onPlaceDecoration,
@@ -363,7 +371,7 @@ function GridGardenView({
                   canMoveDecoration
                     ? 'cursor-pointer hover:border-blue-500 hover:bg-[#7088a5]'
                     : '',
-                  activeTool !== 'none' && flower ? 'cursor-pointer' : ''
+                  (activeTool !== 'none' || onSelectFlower) && flower ? 'cursor-pointer' : ''
                 ].join(' ')}
                 style={{
                   width: CELL_SIZE,
@@ -383,6 +391,14 @@ function GridGardenView({
                     handleLandClick(gridX, gridY, false, false, false)
                   } else if (flower && (activeTool === 'water' || activeTool === 'pick')) {
                     handleFlowerClick(flower.id)
+                  } else if (
+                    flower &&
+                    activeTool === 'none' &&
+                    !isPlantingMode &&
+                    !isDecorationMode &&
+                    !isMovingMode
+                  ) {
+                    onSelectFlower?.(flower)
                   }
                 }}
               >

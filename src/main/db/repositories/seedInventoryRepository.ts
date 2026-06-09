@@ -1,4 +1,6 @@
 import type Database from 'better-sqlite3'
+import type { EmotionTag } from '../../../shared/emotionMeta'
+import type { FlowerRarity } from '../../../shared/rarity'
 
 export interface SeedInventoryItem {
   id: number
@@ -14,8 +16,9 @@ export class SeedInventoryRepository {
   /**
    * 添加种子到背包
    */
-  addSeed(emotionTag: string, rarity: string): void {
+  addSeed(emotionTag: EmotionTag, rarity: FlowerRarity, quantity = 1): void {
     const now = new Date().toISOString()
+    const normalizedQuantity = Math.max(1, Math.floor(quantity))
 
     // 检查是否已有相同类型和稀有度的种子
     const existing = this.database
@@ -33,28 +36,29 @@ export class SeedInventoryRepository {
         .prepare(
           `
           UPDATE seed_inventory
-          SET quantity = quantity + 1
+          SET quantity = quantity + ?
           WHERE id = ?
         `
         )
-        .run(existing.id)
+        .run(normalizedQuantity, existing.id)
     } else {
       // 新增种子
       this.database
         .prepare(
           `
           INSERT INTO seed_inventory (emotion_tag, rarity, quantity, obtained_at)
-          VALUES (?, ?, 1, ?)
+          VALUES (?, ?, ?, ?)
         `
         )
-        .run(emotionTag, rarity, now)
+        .run(emotionTag, rarity, normalizedQuantity, now)
     }
   }
 
   /**
    * 使用种子（播种）
    */
-  useSeed(emotionTag: string, rarity: string): boolean {
+  useSeed(emotionTag: EmotionTag, rarity: FlowerRarity, quantity = 1): boolean {
+    const normalizedQuantity = Math.max(1, Math.floor(quantity))
     const existing = this.database
       .prepare(
         `
@@ -64,11 +68,11 @@ export class SeedInventoryRepository {
       )
       .get(emotionTag, rarity) as { id: number; quantity: number } | undefined
 
-    if (!existing || existing.quantity <= 0) {
+    if (!existing || existing.quantity < normalizedQuantity) {
       return false // 没有种子
     }
 
-    if (existing.quantity === 1) {
+    if (existing.quantity === normalizedQuantity) {
       // 删除记录
       this.database
         .prepare(
@@ -83,11 +87,11 @@ export class SeedInventoryRepository {
         .prepare(
           `
           UPDATE seed_inventory
-          SET quantity = quantity - 1
+          SET quantity = quantity - ?
           WHERE id = ?
         `
         )
-        .run(existing.id)
+        .run(normalizedQuantity, existing.id)
     }
 
     return true
@@ -126,7 +130,7 @@ export class SeedInventoryRepository {
   /**
    * 获取特定种子的数量
    */
-  getSeedCount(emotionTag: string, rarity: string): number {
+  getSeedCount(emotionTag: EmotionTag, rarity: FlowerRarity): number {
     const result = this.database
       .prepare(
         `

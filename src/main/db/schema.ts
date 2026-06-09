@@ -103,6 +103,18 @@ export const SEED_INVENTORY_SCHEMA = `
   );
 `
 
+export const DAILY_CHECKIN_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS daily_checkin (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    checked_on TEXT NOT NULL UNIQUE,
+    reward_type TEXT NOT NULL,
+    reward_amount INTEGER DEFAULT 0,
+    emotion_tag TEXT DEFAULT '',
+    rarity TEXT DEFAULT '',
+    claimed_at TEXT NOT NULL
+  );
+`
+
 function getColumnNames(database: Database.Database): string[] {
   const rows = database.prepare(`PRAGMA table_info(digital_garden)`).all() as Array<{
     name: string
@@ -290,6 +302,7 @@ export function initializeSchema(database: Database.Database): void {
   database.exec(USER_CURRENCY_SCHEMA)
   database.exec(CURRENCY_TRANSACTION_SCHEMA)
   database.exec(SEED_INVENTORY_SCHEMA)
+  database.exec(DAILY_CHECKIN_SCHEMA)
   ensureColumn(database, 'emotion_tag', "emotion_tag TEXT DEFAULT 'fatigue'")
   ensureColumn(database, 'emotion_intensity', "emotion_intensity TEXT DEFAULT 'moderate'")
   ensureColumn(database, 'trigger_scene', "trigger_scene TEXT DEFAULT ''")

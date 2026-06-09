@@ -1,18 +1,27 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import {
+  currencyTransactionsQuerySchema,
+  emotionCalendarQuerySchema,
   emotionAnalysisInputSchema,
   emoTrashChannels,
   emotionStatsRangeSchema,
-  emotionTagSchema,
   emotionTimelineQuerySchema,
+  composeSeedInputSchema,
+  movePlacedDecorationInputSchema,
   pickFlowerInputSchema,
   plantSeedInputSchema,
+  placeDecorationInputSchema,
+  purchaseDecorationInputSchema,
   releaseEmotionInputSchema,
+  removePlacedDecorationInputSchema,
+  recycleSeedInputSchema,
   shakeWindowInputSchema,
+  unlockGardenLandInputSchema,
   waterFlowerInputSchema
 } from '../../preload/api'
 import { getDatabase } from '../db'
 import { CurrencyRepository } from '../db/repositories/currencyRepository'
+import { DailyCheckInRepository } from '../db/repositories/dailyCheckInRepository'
 import { DecorationBattleRepository } from '../db/repositories/decorationBattleRepository'
 import { EmotionRepository } from '../db/repositories/emotionRepository'
 import { GardenLandRepository } from '../db/repositories/gardenLandRepository'
@@ -32,6 +41,7 @@ export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): vo
   const gardenLandRepository = new GardenLandRepository(database)
   const currencyRepository = new CurrencyRepository(database)
   const seedInventoryRepository = new SeedInventoryRepository(database)
+  const dailyCheckInRepository = new DailyCheckInRepository(database)
   const emotionAnalysisService = new EmotionAnalysisService()
   const releaseService = new ReleaseService(
     emotionRepository,
@@ -39,7 +49,8 @@ export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): vo
     currencyRepository,
     seedInventoryRepository,
     gardenLandRepository,
-    emotionAnalysisService
+    emotionAnalysisService,
+    dailyCheckInRepository
   )
   const windowEffectService = new WindowEffectService()
 
@@ -76,12 +87,8 @@ export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): vo
   ipcMain.handle(emoTrashChannels.getTitles, () => releaseService.getTitles())
 
   ipcMain.handle(emoTrashChannels.listEmotionCalendar, (_event, payload) => {
-    const rangeDays = Math.max(1, Math.min(365, Number(payload?.rangeDays ?? 30)))
-    const emotionTags = Array.isArray(payload?.emotionTags)
-      ? payload.emotionTags.map((tag: unknown) => emotionTagSchema.parse(tag))
-      : []
-
-    return releaseService.listEmotionCalendar(rangeDays, emotionTags)
+    const input = emotionCalendarQuerySchema.parse(payload ?? {})
+    return releaseService.listEmotionCalendar(input.rangeDays, input.emotionTags)
   })
 
   ipcMain.handle(emoTrashChannels.listEmotionTimeline, (_event, payload) => {
@@ -103,30 +110,31 @@ export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): vo
   })
 
   ipcMain.handle(emoTrashChannels.placeDecoration, (_event, payload) => {
-    const { type, positionX, positionY } = payload
-    return releaseService.placeDecoration(type, positionX, positionY)
+    const input = placeDecorationInputSchema.parse(payload)
+    return releaseService.placeDecoration(input.type, input.positionX, input.positionY)
   })
 
   ipcMain.handle(emoTrashChannels.movePlacedDecoration, (_event, payload) => {
-    const { placedId, positionX, positionY } = payload
-    return releaseService.movePlacedDecoration(placedId, positionX, positionY)
+    const input = movePlacedDecorationInputSchema.parse(payload)
+    return releaseService.movePlacedDecoration(input.placedId, input.positionX, input.positionY)
   })
 
   ipcMain.handle(emoTrashChannels.removePlacedDecoration, (_event, payload) => {
-    const { placedId } = payload
-    releaseService.removePlacedDecoration(placedId)
+    const input = removePlacedDecorationInputSchema.parse(payload)
+    releaseService.removePlacedDecoration(input.placedId)
     return { success: true }
   })
 
   ipcMain.handle(emoTrashChannels.purchaseDecoration, (_event, payload) => {
-    const { type } = payload
-    return releaseService.purchaseDecoration(type)
+    const input = purchaseDecorationInputSchema.parse(payload)
+    return releaseService.purchaseDecoration(input.type)
   })
 
   ipcMain.handle(emoTrashChannels.getGardenLands, () => gardenLandRepository.getAllLands())
 
   ipcMain.handle(emoTrashChannels.unlockGardenLand, (_event, payload) => {
-    const { gridX, gridY } = payload
+    const input = unlockGardenLandInputSchema.parse(payload)
+    const { gridX, gridY } = input
 
     if (gardenLandRepository.isLandUnlocked(gridX, gridY)) {
       return { success: false, message: '该土地已经解锁', balance: currencyRepository.getBalance() }
@@ -153,8 +161,8 @@ export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): vo
   })
 
   ipcMain.handle(emoTrashChannels.getCurrencyTransactions, (_event, payload) => {
-    const limit = payload?.limit ?? 50
-    return releaseService.getCurrencyTransactions(limit)
+    const input = currencyTransactionsQuerySchema.parse(payload ?? {})
+    return releaseService.getCurrencyTransactions(input.limit)
   })
 
   ipcMain.handle(emoTrashChannels.getSeedInventory, () => releaseService.getSeedInventory())
@@ -171,5 +179,23 @@ export function registerEmotionIpc({ getWindow }: RegisterEmotionIpcOptions): vo
     }
 
     return releaseService.plantSeed(input.emotionTag, input.rarity, input.gridX, input.gridY)
+  })
+
+  ipcMain.handle(emoTrashChannels.getDailyCheckInStatus, () => {
+    return releaseService.getDailyCheckInStatus()
+  })
+
+  ipcMain.handle(emoTrashChannels.claimDailyCheckIn, () => {
+    return releaseService.claimDailyCheckIn()
+  })
+
+  ipcMain.handle(emoTrashChannels.composeSeed, (_event, payload) => {
+    const input = composeSeedInputSchema.parse(payload)
+    return releaseService.composeSeed(input.emotionTag)
+  })
+
+  ipcMain.handle(emoTrashChannels.recycleSeed, (_event, payload) => {
+    const input = recycleSeedInputSchema.parse(payload)
+    return releaseService.recycleSeed(input.emotionTag, input.rarity)
   })
 }

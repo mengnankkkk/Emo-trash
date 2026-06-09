@@ -1,6 +1,8 @@
 import type {
   CurrencyBalance,
   CurrencyTransaction,
+  DailyCheckInReward,
+  DailyCheckInStatus,
   DecorationType,
   EmotionAnalysisInput,
   EmotionStatsRange,
@@ -37,7 +39,13 @@ import {
 } from '../../../shared/emotionInsights'
 import { buildFlowerDexSummary } from '../../../shared/flowerDex'
 import { buildDecorationSummary } from '../../../shared/gardenDecoration'
-import { getEmotionDefinitionByTag } from '../../../shared/emotionMeta'
+import { emotionTagValues, getEmotionDefinitionByTag } from '../../../shared/emotionMeta'
+import {
+  buildDailyCheckInReward,
+  getSeedRecycleReward,
+  SEED_COMPOSE_COST,
+  SEED_COMPOSE_OUTPUT_RARITY
+} from '../../../shared/rewardRules'
 import { determineRarity } from '../../../shared/rarity'
 import { buildTitleSummary } from '../../../shared/titles'
 
@@ -45,6 +53,7 @@ const STORAGE_KEY = 'emo-trash-browser-garden'
 const WATERING_KEY = 'emo-trash-browser-waterings'
 const SEED_KEY = 'emo-trash-browser-seeds'
 const CURRENCY_KEY = 'emo-trash-browser-currency'
+const CHECKIN_KEY = 'emo-trash-browser-checkin'
 
 const rarityRewardMap: Record<FlowerRarity, number> = {
   common: 10,
@@ -77,6 +86,100 @@ function readSeeds(): SeedInventoryItem[] {
 
 function saveSeeds(seeds: SeedInventoryItem[]): void {
   window.localStorage.setItem(SEED_KEY, JSON.stringify(seeds))
+}
+
+function addBrowserSeed(emotionTag: EmotionTag, rarity: FlowerRarity, quantity = 1): SeedInventoryItem[] {
+  const seeds = readSeeds()
+  const existing = seeds.find((item) => item.emotionTag === emotionTag && item.rarity === rarity)
+
+  if (existing) {
+    existing.quantity += quantity
+    existing.obtainedAt = new Date().toISOString()
+  } else {
+    seeds.push({
+      id: Date.now(),
+      emotionTag,
+      rarity,
+      quantity,
+      obtainedAt: new Date().toISOString()
+    })
+  }
+
+  saveSeeds(seeds)
+  return seeds
+}
+
+function useBrowserSeed(emotionTag: EmotionTag, rarity: FlowerRarity, quantity = 1): SeedInventoryItem[] | null {
+  const seeds = readSeeds()
+  const index = seeds.findIndex((item) => item.emotionTag === emotionTag && item.rarity === rarity)
+
+  if (index === -1 || seeds[index].quantity < quantity) {
+    return null
+  }
+
+  seeds[index].quantity -= quantity
+  if (seeds[index].quantity <= 0) {
+    seeds.splice(index, 1)
+  }
+
+  saveSeeds(seeds)
+  return seeds
+}
+
+function readBrowserCheckIn(): { lastClaimedOn: string | null; streak: number } {
+  const rawValue = window.localStorage.getItem(CHECKIN_KEY)
+  if (!rawValue) {
+    return { lastClaimedOn: null, streak: 0 }
+  }
+
+  return JSON.parse(rawValue) as { lastClaimedOn: string | null; streak: number }
+}
+
+function writeBrowserCheckIn(value: { lastClaimedOn: string; streak: number }): void {
+  window.localStorage.setItem(CHECKIN_KEY, JSON.stringify(value))
+}
+
+function getPreviousDateKey(dateKey: string): string {
+  const date = new Date(`${dateKey}T00:00:00`)
+  date.setDate(date.getDate() - 1)
+  return toDateKey(date)
+}
+
+function getBrowserCheckInStatus(): DailyCheckInStatus {
+  const todayKey = toDateKey(new Date())
+  const record = readBrowserCheckIn()
+  const checkedInToday = record.lastClaimedOn === todayKey
+  const currentStreak = checkedInToday
+    ? record.streak
+    : record.lastClaimedOn === getPreviousDateKey(todayKey)
+      ? record.streak
+      : 0
+  const nextStreak = checkedInToday ? currentStreak + 1 : currentStreak + 1
+
+  return {
+    todayKey,
+    checkedInToday,
+    currentStreak,
+    nextStreak,
+    lastClaimedOn: record.lastClaimedOn,
+    rewardPreview: buildBrowserCheckInReward(nextStreak)
+  }
+}
+
+function buildBrowserCheckInReward(streak: number): DailyCheckInReward {
+  return buildDailyCheckInReward(streak)
+
+  const emotionTag = emotionTagValues[streak % emotionTagValues.length]
+  if (streak % 7 === 0) {
+    return { type: 'seed', label: '连续 7 天星光种子', emotionTag, rarity: 'stellar' }
+  }
+  if (streak % 3 === 0) {
+    return { type: 'seed', label: '连续 3 天闪光种子', emotionTag, rarity: 'shiny' }
+  }
+  if (streak % 2 === 0) {
+    return { type: 'seed', label: '每日普通种子', emotionTag, rarity: 'common' }
+  }
+  return { type: 'currency', label: '每日金币', coins: 20 }
 }
 
 function readBrowserCurrency(): number {
@@ -371,6 +474,91 @@ const browserPreviewApi: EmoTrashApi = {
   async getTotalSeedCount(): Promise<{ count: number }> {
     const count = readSeeds().reduce((sum, item) => sum + item.quantity, 0)
     return { count }
+  },
+
+  async getDailyCheckInStatus() {
+    return getBrowserCheckInStatus()
+  },
+
+  async claimDailyCheckIn() {
+    const status = getBrowserCheckInStatus()
+    if (status.checkedInToday) {
+      return {
+        success: false,
+        status,
+        balance: readBrowserCurrency(),
+        seeds: readSeeds(),
+        message: '今天已经签到过了。'
+      }
+    }
+
+    const reward = status.rewardPreview
+    if (reward.type === 'currency') {
+      saveBrowserCurrency(readBrowserCurrency() + (reward.coins ?? 0))
+    } else if (reward.emotionTag && reward.rarity) {
+      addBrowserSeed(reward.emotionTag, reward.rarity)
+    }
+
+    writeBrowserCheckIn({ lastClaimedOn: status.todayKey, streak: status.nextStreak })
+
+    return {
+      success: true,
+      status: getBrowserCheckInStatus(),
+      balance: readBrowserCurrency(),
+      seeds: readSeeds(),
+      reward
+    }
+  },
+
+  async composeSeed(input) {
+    const seeds = readSeeds()
+    const target = seeds.find(
+      (item) => item.emotionTag === input.emotionTag && item.rarity === 'common'
+    )
+
+    if (!target || target.quantity < SEED_COMPOSE_COST) {
+      return {
+        success: false,
+        seeds,
+        balance: readBrowserCurrency(),
+        message: '需要 3 颗同情绪普通种子才能合成闪光种子。'
+      }
+    }
+
+    useBrowserSeed(input.emotionTag, 'common', SEED_COMPOSE_COST)
+    const nextSeeds = addBrowserSeed(input.emotionTag, SEED_COMPOSE_OUTPUT_RARITY)
+
+    return {
+      success: true,
+      seeds: nextSeeds,
+      balance: readBrowserCurrency(),
+      message: '合成成功，获得 1 颗闪光种子。'
+    }
+  },
+
+  async recycleSeed(input) {
+    const nextSeeds = useBrowserSeed(input.emotionTag, input.rarity)
+
+    if (!nextSeeds) {
+      return {
+        success: false,
+        seeds: readSeeds(),
+        balance: readBrowserCurrency(),
+        message: '背包里没有这颗种子。'
+      }
+    }
+
+    const rewardCoins = getSeedRecycleReward(input.rarity)
+    const nextBalance = readBrowserCurrency() + rewardCoins
+    saveBrowserCurrency(nextBalance)
+
+    return {
+      success: true,
+      seeds: nextSeeds,
+      balance: nextBalance,
+      rewardCoins,
+      message: `回收成功，获得 ${rewardCoins} 金币。`
+    }
   },
 
   async plantSeed(input: PlantSeedInput) {

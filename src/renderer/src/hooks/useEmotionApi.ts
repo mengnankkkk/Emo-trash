@@ -2,6 +2,8 @@ import { useCallback } from 'react'
 import type {
   CurrencyBalance,
   CurrencyTransaction,
+  DailyCheckInResult,
+  DailyCheckInStatus,
   DecorationSummary,
   EmotionAnalysisInput,
   EmotionStatsRange,
@@ -14,6 +16,7 @@ import type {
   EmotionCalendarDay,
   EmotionStatsSummary,
   EmotionTimelineEntry,
+  FlowerRarity,
   PlaceDecorationInput,
   PurchaseDecorationResult,
   TitleSummary,
@@ -22,6 +25,7 @@ import type {
   PickFlowerResult,
   AchievementSummary,
   ReleaseEmotionResult,
+  SeedOperationResult,
   SeedInventoryItem,
   PlantSeedInput,
   PlantSeedResult
@@ -62,6 +66,10 @@ export function useEmotionApi(): {
   placeDecoration: (input: PlaceDecorationInput) => Promise<PlacedDecoration>
   movePlacedDecoration: (input: MovePlacedDecorationInput) => Promise<PlacedDecoration>
   removePlacedDecoration: (placedId: number) => Promise<{ success: boolean }>
+  getDailyCheckInStatus: () => Promise<DailyCheckInStatus>
+  claimDailyCheckIn: () => Promise<DailyCheckInResult>
+  composeSeed: (emotionTag: EmotionTag) => Promise<SeedOperationResult>
+  recycleSeed: (emotionTag: EmotionTag, rarity: FlowerRarity) => Promise<SeedOperationResult>
 } {
   const analyzeEmotion = useCallback(async (text: string): Promise<ReleaseEmotionInput> => {
     const input: EmotionAnalysisInput = { text }
@@ -166,6 +174,22 @@ export function useEmotionApi(): {
     return getRuntimeApi().removePlacedDecoration({ placedId })
   }, [])
 
+  const getDailyCheckInStatus = useCallback(() => {
+    return getRuntimeApi().getDailyCheckInStatus()
+  }, [])
+
+  const claimDailyCheckIn = useCallback(() => {
+    return getRuntimeApi().claimDailyCheckIn()
+  }, [])
+
+  const composeSeed = useCallback((emotionTag: EmotionTag) => {
+    return getRuntimeApi().composeSeed({ emotionTag })
+  }, [])
+
+  const recycleSeed = useCallback((emotionTag: EmotionTag, rarity: FlowerRarity) => {
+    return getRuntimeApi().recycleSeed({ emotionTag, rarity })
+  }, [])
+
   return {
     analyzeEmotion,
     releaseEmotion,
@@ -190,6 +214,10 @@ export function useEmotionApi(): {
     purchaseDecoration,
     placeDecoration,
     movePlacedDecoration,
-    removePlacedDecoration
+    removePlacedDecoration,
+    getDailyCheckInStatus,
+    claimDailyCheckIn,
+    composeSeed,
+    recycleSeed
   }
 }

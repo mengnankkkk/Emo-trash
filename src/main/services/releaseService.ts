@@ -1,5 +1,8 @@
 import type {
   AchievementSummary,
+  DailyCheckInResult,
+  DailyCheckInReward,
+  DailyCheckInStatus,
   EmotionCalendarDay,
   EmotionStatsRange,
   EmotionStatsSummary,
@@ -14,6 +17,8 @@ import type {
   PlantSeedResult,
   ReleaseEmotionInput,
   ReleaseEmotionResult,
+  SeedInventoryItem,
+  SeedOperationResult,
   TitleSummary,
   WaterFlowerResult
 } from '../../preload/api'
@@ -45,11 +50,18 @@ import {
   type DecorationType,
   type PlacedDecoration
 } from '../../shared/gardenDecoration'
-import { getEmotionDefinitionByTag } from '../../shared/emotionMeta'
+import { emotionTagValues, getEmotionDefinitionByTag } from '../../shared/emotionMeta'
+import {
+  buildDailyCheckInReward,
+  getSeedRecycleReward,
+  SEED_COMPOSE_COST,
+  SEED_COMPOSE_OUTPUT_RARITY
+} from '../../shared/rewardRules'
 import { determineRarity } from '../../shared/rarity'
 import { EmotionAnalysisService } from './emotionAnalysisService'
 import { DecorationBattleRepository } from '../db/repositories/decorationBattleRepository'
 import { CurrencyRepository } from '../db/repositories/currencyRepository'
+import { DailyCheckInRepository } from '../db/repositories/dailyCheckInRepository'
 import { EmotionRepository } from '../db/repositories/emotionRepository'
 import { GardenLandRepository } from '../db/repositories/gardenLandRepository'
 import { SeedInventoryRepository } from '../db/repositories/seedInventoryRepository'
@@ -71,7 +83,8 @@ export class ReleaseService {
     private readonly currencyRepository: CurrencyRepository,
     private readonly seedInventoryRepository: SeedInventoryRepository,
     private readonly gardenLandRepository?: GardenLandRepository,
-    private readonly emotionAnalysisService?: EmotionAnalysisService
+    private readonly emotionAnalysisService?: EmotionAnalysisService,
+    private readonly dailyCheckInRepository?: DailyCheckInRepository
   ) {}
 
   analyzeEmotion(text: string): Promise<ReleaseEmotionInput> {
@@ -86,8 +99,9 @@ export class ReleaseService {
     const emotionTag = input.emotionTag
     const emotionIntensity = input.analysis?.emotionIntensity ?? 'moderate'
 
-    const rarity = ((input as { rarity?: FlowerRarity }).rarity ??
-      determineRarity(Math.random(), this.getActiveRarityBonus())) as FlowerRarity
+    const rarity =
+      (input as { rarity?: FlowerRarity }).rarity ??
+      determineRarity(Math.random(), this.getActiveRarityBonus())
 
     // 添加种子到背包
     this.seedInventoryRepository.addSeed(emotionTag, rarity)
@@ -109,7 +123,7 @@ export class ReleaseService {
   }
 
   plantSeed(
-    emotionTag: string,
+    emotionTag: EmotionTag,
     rarity: FlowerRarity,
     gridX: number,
     gridY: number
@@ -132,7 +146,7 @@ export class ReleaseService {
     }
 
     const now = new Date()
-    const emotionDefinition = getEmotionDefinitionByTag(emotionTag as EmotionTag)
+    const emotionDefinition = getEmotionDefinitionByTag(emotionTag)
     const plantedInput: ReleaseEmotionInput = {
       textLength: 0,
       exclamationDensity: 0,
@@ -390,12 +404,128 @@ export class ReleaseService {
     return this.currencyRepository.getTransactionHistory(limit)
   }
 
-  getSeedInventory() {
-    return this.seedInventoryRepository.getAllSeeds()
+  getSeedInventory(): SeedInventoryItem[] {
+    return this.seedInventoryRepository.getAllSeeds().map((seed) => ({
+      ...seed,
+      emotionTag: seed.emotionTag as EmotionTag,
+      rarity: seed.rarity as FlowerRarity
+    }))
   }
 
   getTotalSeedCount(): number {
     return this.seedInventoryRepository.getTotalSeedCount()
+  }
+
+  getDailyCheckInStatus(): DailyCheckInStatus {
+    const repository = this.requireDailyCheckInRepository()
+    const todayKey = toDateKey(new Date())
+    const checkedInToday = repository.hasCheckedIn(todayKey)
+    const currentStreak = repository.getCurrentStreak(todayKey)
+    const nextStreak = checkedInToday ? currentStreak + 1 : currentStreak + 1
+    const lastRecord = repository.getLastRecord()
+
+    return {
+      todayKey,
+      checkedInToday,
+      currentStreak,
+      nextStreak,
+      lastClaimedOn: lastRecord?.checkedOn ?? null,
+      rewardPreview: this.buildCheckInReward(nextStreak)
+    }
+  }
+
+  claimDailyCheckIn(): DailyCheckInResult {
+    const repository = this.requireDailyCheckInRepository()
+    const status = this.getDailyCheckInStatus()
+
+    if (status.checkedInToday) {
+      return {
+        success: false,
+        status,
+        balance: this.currencyRepository.getBalance(),
+        seeds: this.getSeedInventory(),
+        message: '今天已经签到过了。'
+      }
+    }
+
+    const reward = status.rewardPreview
+    const recorded = repository.recordCheckIn({
+      dateKey: status.todayKey,
+      rewardType: reward.type,
+      rewardAmount: reward.coins ?? 0,
+      emotionTag: reward.emotionTag,
+      rarity: reward.rarity
+    })
+
+    if (!recorded) {
+      const nextStatus = this.getDailyCheckInStatus()
+      return {
+        success: false,
+        status: nextStatus,
+        balance: this.currencyRepository.getBalance(),
+        seeds: this.getSeedInventory(),
+        message: '今天已经签到过了。'
+      }
+    }
+
+    if (reward.type === 'currency') {
+      this.currencyRepository.addCurrency(reward.coins ?? 0, `每日签到：${reward.label}`)
+    } else if (reward.emotionTag && reward.rarity) {
+      this.seedInventoryRepository.addSeed(reward.emotionTag, reward.rarity)
+    }
+
+    return {
+      success: true,
+      status: this.getDailyCheckInStatus(),
+      balance: this.currencyRepository.getBalance(),
+      seeds: this.getSeedInventory(),
+      reward
+    }
+  }
+
+  composeSeed(emotionTag: EmotionTag): SeedOperationResult {
+    const commonCount = this.seedInventoryRepository.getSeedCount(emotionTag, 'common')
+    if (commonCount < SEED_COMPOSE_COST) {
+      return {
+        success: false,
+        seeds: this.getSeedInventory(),
+        balance: this.currencyRepository.getBalance(),
+        message: '需要 3 颗同情绪普通种子才能合成闪光种子。'
+      }
+    }
+
+    this.seedInventoryRepository.useSeed(emotionTag, 'common', SEED_COMPOSE_COST)
+    this.seedInventoryRepository.addSeed(emotionTag, SEED_COMPOSE_OUTPUT_RARITY)
+
+    return {
+      success: true,
+      seeds: this.getSeedInventory(),
+      balance: this.currencyRepository.getBalance(),
+      message: '合成成功，获得 1 颗闪光种子。'
+    }
+  }
+
+  recycleSeed(emotionTag: EmotionTag, rarity: FlowerRarity): SeedOperationResult {
+    const used = this.seedInventoryRepository.useSeed(emotionTag, rarity)
+    if (!used) {
+      return {
+        success: false,
+        seeds: this.getSeedInventory(),
+        balance: this.currencyRepository.getBalance(),
+        message: '背包里没有这颗种子。'
+      }
+    }
+
+    const rewardCoins = getSeedRecycleReward(rarity)
+    const result = this.currencyRepository.addCurrency(rewardCoins, `回收${rarity}种子`)
+
+    return {
+      success: true,
+      seeds: this.getSeedInventory(),
+      balance: result.balance,
+      rewardCoins,
+      message: `回收成功，获得 ${rewardCoins} 金币。`
+    }
   }
 
   private getRemainingManualWaterings(dateKey: string): number {
@@ -439,5 +569,54 @@ export class ReleaseService {
 
       return right.id - left.id
     })
+  }
+
+  private requireDailyCheckInRepository(): DailyCheckInRepository {
+    if (!this.dailyCheckInRepository) {
+      throw new Error('DailyCheckInRepository is not configured')
+    }
+
+    return this.dailyCheckInRepository
+  }
+
+  private buildCheckInReward(streak: number): DailyCheckInReward {
+    return buildDailyCheckInReward(streak)
+
+    if (streak % 7 === 0) {
+      return {
+        type: 'seed',
+        label: '连续 7 天星光种子',
+        emotionTag: this.pickRewardEmotion(streak),
+        rarity: 'stellar'
+      }
+    }
+
+    if (streak % 3 === 0) {
+      return {
+        type: 'seed',
+        label: '连续 3 天闪光种子',
+        emotionTag: this.pickRewardEmotion(streak),
+        rarity: 'shiny'
+      }
+    }
+
+    if (streak % 2 === 0) {
+      return {
+        type: 'seed',
+        label: '每日普通种子',
+        emotionTag: this.pickRewardEmotion(streak),
+        rarity: 'common'
+      }
+    }
+
+    return {
+      type: 'currency',
+      label: '每日金币',
+      coins: 20
+    }
+  }
+
+  private pickRewardEmotion(seed: number): EmotionTag {
+    return emotionTagValues[Math.abs(seed) % emotionTagValues.length]
   }
 }

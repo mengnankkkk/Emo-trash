@@ -34,7 +34,11 @@ export const emoTrashChannels = {
   getCurrencyTransactions: 'currency:transactions',
   getSeedInventory: 'seed:inventory',
   getTotalSeedCount: 'seed:total-count',
-  plantSeed: 'seed:plant'
+  plantSeed: 'seed:plant',
+  getDailyCheckInStatus: 'checkin:status',
+  claimDailyCheckIn: 'checkin:claim',
+  composeSeed: 'seed:compose',
+  recycleSeed: 'seed:recycle'
 } as const
 
 export const emotionTagSchema = z.enum(emotionTagValues)
@@ -185,11 +189,59 @@ export const plantSeedResultSchema = z.object({
   message: z.string().optional()
 })
 
+export const dailyCheckInRewardSchema = z.object({
+  type: z.enum(['currency', 'seed']),
+  label: z.string(),
+  coins: z.number().int().positive().optional(),
+  emotionTag: emotionTagSchema.optional(),
+  rarity: raritySchema.optional()
+})
+
+export const dailyCheckInStatusSchema = z.object({
+  todayKey: z.string(),
+  checkedInToday: z.boolean(),
+  currentStreak: z.number().int().nonnegative(),
+  nextStreak: z.number().int().positive(),
+  lastClaimedOn: z.string().nullable(),
+  rewardPreview: dailyCheckInRewardSchema
+})
+
+export const dailyCheckInResultSchema = z.object({
+  success: z.boolean(),
+  status: dailyCheckInStatusSchema,
+  balance: z.number().int().nonnegative(),
+  seeds: z.array(seedInventoryItemSchema),
+  reward: dailyCheckInRewardSchema.optional(),
+  message: z.string().optional()
+})
+
+export const composeSeedInputSchema = z.object({
+  emotionTag: emotionTagSchema
+})
+
+export const seedOperationResultSchema = z.object({
+  success: z.boolean(),
+  seeds: z.array(seedInventoryItemSchema),
+  balance: z.number().int().nonnegative(),
+  message: z.string().optional(),
+  rewardCoins: z.number().int().nonnegative().optional()
+})
+
+export const recycleSeedInputSchema = z.object({
+  emotionTag: emotionTagSchema,
+  rarity: raritySchema
+})
+
 export const emotionCalendarDaySchema = z.object({
   date: z.string(),
   count: z.number().int().nonnegative(),
   dominantEmotionTag: emotionTagSchema.nullable(),
   intensityLevel: z.number().int().min(0).max(4)
+})
+
+export const emotionCalendarQuerySchema = z.object({
+  rangeDays: z.coerce.number().int().min(1).max(365).default(30),
+  emotionTags: z.array(emotionTagSchema).default([])
 })
 
 export const emotionTimelineQuerySchema = z.object({
@@ -357,6 +409,15 @@ export const purchaseDecorationInputSchema = z.object({
   type: decorationTypeSchema
 })
 
+export const unlockGardenLandInputSchema = z.object({
+  gridX: z.number().int().min(0).max(5),
+  gridY: z.number().int().min(0).max(3)
+})
+
+export const currencyTransactionsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(365).default(50)
+})
+
 export const purchaseDecorationResultSchema = z.object({
   success: z.boolean(),
   balance: z.number().int().nonnegative(),
@@ -378,6 +439,7 @@ export type GardenGrowthSnapshot = z.infer<typeof gardenGrowthSnapshotSchema>
 export type WaterFlowerResult = z.infer<typeof waterFlowerResultSchema>
 export type PickFlowerResult = z.infer<typeof pickFlowerResultSchema>
 export type EmotionCalendarDay = z.infer<typeof emotionCalendarDaySchema>
+export type EmotionCalendarQuery = z.infer<typeof emotionCalendarQuerySchema>
 export type EmotionTimelineQuery = z.infer<typeof emotionTimelineQuerySchema>
 export type EmotionTimelineEntry = GardenItem
 export type ShakeWindowInput = z.infer<typeof shakeWindowInputSchema>
@@ -403,11 +465,19 @@ export type PurchaseDecorationInput = z.infer<typeof purchaseDecorationInputSche
 export type PurchaseDecorationResult = z.infer<typeof purchaseDecorationResultSchema>
 export type CurrencyBalance = z.infer<typeof currencyBalanceSchema>
 export type CurrencyTransaction = z.infer<typeof currencyTransactionSchema>
+export type CurrencyTransactionsQuery = z.infer<typeof currencyTransactionsQuerySchema>
+export type UnlockGardenLandInput = z.infer<typeof unlockGardenLandInputSchema>
 export type UnlockLandResult = z.infer<typeof unlockLandResultSchema>
 export type SeedInventoryItem = z.infer<typeof seedInventoryItemSchema>
 export type ReleaseEmotionResult = z.infer<typeof releaseEmotionResultSchema>
 export type PlantSeedInput = z.infer<typeof plantSeedInputSchema>
 export type PlantSeedResult = z.infer<typeof plantSeedResultSchema>
+export type DailyCheckInReward = z.infer<typeof dailyCheckInRewardSchema>
+export type DailyCheckInStatus = z.infer<typeof dailyCheckInStatusSchema>
+export type DailyCheckInResult = z.infer<typeof dailyCheckInResultSchema>
+export type ComposeSeedInput = z.infer<typeof composeSeedInputSchema>
+export type RecycleSeedInput = z.infer<typeof recycleSeedInputSchema>
+export type SeedOperationResult = z.infer<typeof seedOperationResultSchema>
 
 export interface GardenLandCell {
   id: number
@@ -444,4 +514,8 @@ export interface EmoTrashApi {
   getSeedInventory(): Promise<SeedInventoryItem[]>
   getTotalSeedCount(): Promise<{ count: number }>
   plantSeed(input: PlantSeedInput): Promise<PlantSeedResult>
+  getDailyCheckInStatus(): Promise<DailyCheckInStatus>
+  claimDailyCheckIn(): Promise<DailyCheckInResult>
+  composeSeed(input: ComposeSeedInput): Promise<SeedOperationResult>
+  recycleSeed(input: RecycleSeedInput): Promise<SeedOperationResult>
 }
